@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       headers["x-ingestion-key"] = ingestionKey;
     }
 
-    const res = await fetch("http://localhost:4002/api/v1/invoices", {
+    const res = await fetch("https://hysomer-ingestion-server.onrender.com/api/v1/invoices", {
       method: "POST",
       headers,
       body: JSON.stringify(externalPayload),
