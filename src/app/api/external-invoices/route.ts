@@ -2,12 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    console.log(body);
+    const rawBody = await req.json();
+    const body = rawBody && typeof rawBody === "object" ? rawBody : {};
+    const ingestionKeyFromHeader = req.headers.get("x-ingestion-key")?.trim() || "";
+    const ingestionKey =
+      ingestionKeyFromHeader ||
+      (typeof (body as { ingestionKey?: unknown }).ingestionKey === "string"
+        ? (body as { ingestionKey?: string }).ingestionKey?.trim() || ""
+        : "");
+
+    const externalPayload = { ...(body as Record<string, unknown>) };
+    delete externalPayload.ingestionKey;
+
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (ingestionKey) {
+      headers["x-ingestion-key"] = ingestionKey;
+    }
+
     const res = await fetch("http://localhost:4002/api/v1/invoices", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      headers,
+      body: JSON.stringify(externalPayload),
       cache: "no-store"
     });
 

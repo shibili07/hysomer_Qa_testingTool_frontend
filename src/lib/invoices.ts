@@ -22,9 +22,11 @@ type CreateInvoiceInput = {
   cashierName?: string | null;
   notes?: string | null;
   externalTerminalId?: string | null;
+  ingestionKey?: string | null;
 };
 
 export async function createInvoice(input: CreateInvoiceInput) {
+  const ingestionKey = input.ingestionKey?.trim() || undefined;
   const items = input.cart
     .map((line) => {
       const p = input.products.find((x) => x.id === line.productId);
@@ -91,7 +93,10 @@ export async function createInvoice(input: CreateInvoiceInput) {
 
   const extRes = await fetch("/api/external-invoices", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(ingestionKey ? { "X-Ingestion-Key": ingestionKey } : {})
+    },
     body: JSON.stringify(basePayload)
   });
 

@@ -11,12 +11,16 @@ type ExternalSyncItem = {
   discountAmount?: number;
 };
 
+type PaymentMethod = "CASH" | "CARD" | "UPI" | "NET_BANKING" | "WALLET" | "OTHER";
+
 type SyncCustomerExternalOptions = {
   items?: ExternalSyncItem[];
   subtotalAmount?: number;
   discountAmount?: number;
   totalTax?: number;
   totalAmount?: number;
+  ingestionKey?: string;
+  paymentMethod?: PaymentMethod | null;
 };
 
 export type SyncedCustomerResult = {
@@ -72,6 +76,8 @@ export const syncCustomerExternal = async (
   const discountAmount = options?.discountAmount ?? 0;
   const totalTax = options?.totalTax ?? 0;
   const totalAmount = options?.totalAmount ?? subtotalAmount + totalTax - discountAmount;
+  const ingestionKey = options?.ingestionKey?.trim() || undefined;
+  const paymentMethod = options?.paymentMethod ?? null;
 
   const invoiceLikePayload = {
     externalInvoiceId: `CUST-SYNC-${Date.now()}`,
@@ -82,7 +88,7 @@ export const syncCustomerExternal = async (
     totalTax,
     status: "PENDING" as const,
     currency: "INR" as const,
-    paymentMethod: null,
+    paymentMethod,
     externalCustomerId: null,
     customer: {
       name: customer.name,
@@ -99,7 +105,10 @@ export const syncCustomerExternal = async (
 
   const res = await fetch("/api/external-invoices", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(ingestionKey ? { "X-Ingestion-Key": ingestionKey } : {})
+    },
     body: JSON.stringify(invoiceLikePayload)
   });
 

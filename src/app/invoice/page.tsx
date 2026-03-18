@@ -26,12 +26,14 @@ export default function InvoicePage() {
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
   const [status, setStatus] = useState<"PAID" | "PENDING" | "CANCELLED" | "REFUNDED">("PAID");
   const [paymentMethod, setPaymentMethod] = useState<
     "CASH" | "CARD" | "UPI" | "NET_BANKING" | "WALLET" | "OTHER" | ""
   >("CASH");
   const [cashierName, setCashierName] = useState("hysomer");
   const [notes, setNotes] = useState("");
+  const [ingestionKey, setIngestionKey] = useState("");
   const [loading, setLoading] = useState(false);
 
   const refreshBaseData = async () => {
@@ -126,6 +128,7 @@ export default function InvoicePage() {
       const customerParsed = CustomerSchema.safeParse({
         name: customerName.trim(),
         phone: customerPhone.trim(),
+        email: customerEmail.trim() || null,
         externalCustomerId: null
       });
       if (!customerParsed.success) {
@@ -134,6 +137,8 @@ export default function InvoicePage() {
         return;
       }
       const syncResult = await syncCustomerExternal(customerParsed.data, {
+        ingestionKey,
+        paymentMethod: paymentMethod || null,
         items: itemRows.map((row) => ({
           productName: row.product.productName,
           quantity: row.quantity,
@@ -163,7 +168,8 @@ export default function InvoicePage() {
         status,
         paymentMethod: paymentMethod || null,
         cashierName: cashierName || null,
-        notes: notes || null
+        notes: notes || null,
+        ingestionKey: ingestionKey.trim() || null
       });
 
       setCart([]);
@@ -196,9 +202,14 @@ export default function InvoicePage() {
           <CardTitle>1) Customer</CardTitle>
           <CardDescription>Enter customer details (optional).</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-2">
+        <CardContent className="grid gap-3 md:grid-cols-3">
           <Input placeholder="Customer Name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
           <Input placeholder="Phone Number" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+          <Input
+            placeholder="Email (optional)"
+            value={customerEmail}
+            onChange={(e) => setCustomerEmail(e.target.value)}
+          />
         </CardContent>
       </Card>
 
@@ -315,6 +326,11 @@ export default function InvoicePage() {
               <option value="OTHER">OTHER</option>
             </select>
             <Input placeholder="Cashier Name" value={cashierName} onChange={(e) => setCashierName(e.target.value)} />
+            <Input
+              placeholder="API Key"
+              value={ingestionKey}
+              onChange={(e) => setIngestionKey(e.target.value)}
+            />
             <Textarea placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
             <Button onClick={saveInvoice} disabled={loading}>
               Create Invoice
