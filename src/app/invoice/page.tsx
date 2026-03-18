@@ -73,13 +73,13 @@ export default function InvoicePage() {
         };
       })
       .filter(Boolean) as Array<{
-      product: ProductRecord;
-      quantity: number;
-      lineSubtotal: number;
-      lineTax: number;
-      lineDiscount: number;
-      lineTotal: number;
-    }>;
+        product: ProductRecord;
+        quantity: number;
+        lineSubtotal: number;
+        lineTax: number;
+        lineDiscount: number;
+        lineTotal: number;
+      }>;
   }, [cart, products]);
 
   const totals = useMemo(() => {
@@ -194,11 +194,11 @@ export default function InvoicePage() {
       <Card>
         <CardHeader>
           <CardTitle>1) Customer</CardTitle>
-          <CardDescription>Enter customer name and phone. This is sent to ingestion server.</CardDescription>
+          <CardDescription>Enter customer details (optional).</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2">
-          <Input placeholder="Customer Name *" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-          <Input placeholder="Phone Number *" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+          <Input placeholder="Customer Name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+          <Input placeholder="Phone Number" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
         </CardContent>
       </Card>
 

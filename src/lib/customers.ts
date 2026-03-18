@@ -51,8 +51,8 @@ const normalizeCustomer = (input: CustomerInput): CustomerInput => {
   return {
     ...validated,
     customerId: validated.customerId || crypto.randomUUID(),
-    phone: validated.phone.trim(),
-    name: validated.name.trim(),
+    phone: validated.phone?.trim() || "",
+    name: validated.name?.trim() || "Guest",
     email: validated.email?.trim() || null,
     city: validated.city?.trim() || null,
     state: validated.state?.trim() || null,

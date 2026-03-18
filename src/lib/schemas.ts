@@ -20,9 +20,9 @@ export type ProductRecord = ProductInput & {
 export const CustomerSchema = z.object({
   customerId: z.string().uuid().optional(),
   externalCustomerId: z.string().min(1).optional().nullable(),
-  phone: z.string().min(1, "Phone is required"),
+  phone: z.string().optional().nullable(),
   email: z.string().email("Email must be valid").optional().nullable(),
-  name: z.string().min(1, "Name is required"),
+  name: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
   state: z.string().optional().nullable(),
   country: z.string().optional().nullable(),
