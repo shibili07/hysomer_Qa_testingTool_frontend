@@ -11,12 +11,21 @@ export async function POST(req: NextRequest) {
         ? (body as { ingestionKey?: string }).ingestionKey?.trim() || ""
         : "");
 
+    const organizationIdFromHeader = req.headers.get("x-organization-id")?.trim() || "";
+    const organizationId =
+      organizationIdFromHeader ||
+      process.env.HYSOMER_ORGANIZATION_ID?.trim() ||
+      "ce6be37d-4076-4bb0-b228-0a4358b4d927";
+
     const externalPayload = { ...(body as Record<string, unknown>) };
     delete externalPayload.ingestionKey;
 
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (ingestionKey) {
       headers["x-ingestion-key"] = ingestionKey;
+    }
+    if (organizationId) {
+      headers["x-organization-id"] = organizationId;
     }
 
     const res = await fetch("https://hysomer-ingestion-server.onrender.com/api/v1/invoices", {
