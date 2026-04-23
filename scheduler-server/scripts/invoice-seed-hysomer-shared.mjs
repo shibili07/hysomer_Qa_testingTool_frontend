@@ -200,10 +200,13 @@ function randomCustomer() {
 }
 
 function randomInvoiceDate() {
-  const now = Date.now();
-  const daysBack = randomInt(0, 120);
-  const millis = daysBack * 24 * 60 * 60 * 1000 + randomInt(8, 22) * 60 * 60 * 1000 + randomInt(0, 59) * 60000;
-  return new Date(now - millis).toISOString();
+  return new Date().toISOString();
+}
+
+function makeExternalInvoiceId(index) {
+  const serial = String(index + 1).padStart(2, "0");
+  const unique = `${Date.now()}${randomInt(100, 999)}`;
+  return `Inv_${serial}_${unique}`;
 }
 
 function pickProductsForPattern(pattern) {
@@ -316,7 +319,7 @@ export function buildInvoicePayload(index) {
 
   return {
     organizationId,
-    externalInvoiceId: `${invoiceIdPrefix}-${Date.now()}-${String(index + 1).padStart(6, "0")}`,
+    externalInvoiceId: makeExternalInvoiceId(index),
     invoiceDate: randomInvoiceDate(),
     totalAmount,
     customerId: null,

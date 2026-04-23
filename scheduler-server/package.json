@@ -1,0 +1,14 @@
+{
+  "name": "scheduler-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "seed:once": "node scripts/add-real-invoices-hysomer.mjs"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "dotenv": "^16.4.7",
+    "node-cron": "^3.0.3"
+  }
+}

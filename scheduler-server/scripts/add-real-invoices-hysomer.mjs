@@ -1,5 +1,13 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
 import { createCommand } from "commander";
 import { initializeSeederContext, runSeeding } from "./invoice-seed-hysomer-shared.mjs";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
+
+const DEFAULT_INGESTION_ENDPOINT = "https://hysomer-ingestion-server.onrender.com/api/v1/invoices";
 
 const program = createCommand().name("add-real-invoices-hysomer");
 
@@ -8,15 +16,10 @@ program
   .option("-c, --count <number>", "Number of additional invoices to post", "500")
   .option("-k, --ingestion-key <key>", "Ingestion API key")
   .option("-o, --organization-id <id>", "Organization ID")
-  .option(
-    "-e, --endpoint <url>",
-    "Target invoices ingestion endpoint",
-    "https://hysomer-ingestion-server.onrender.com/api/v1/invoices"
-  )
+  .option("-e, --endpoint <url>", "Target invoices ingestion endpoint (else HYSOMER_ENDPOINT, else hosted URL)")
   .option(
     "--email-bases <emails>",
-    "Comma-separated base emails used for generated customers",
-    "shibilshibil8111@gmail.com,abdulvajid771@gmail.com"
+    "Comma-separated base emails for generated customers (else HYSOMER_EMAIL_BASES)"
   )
   .option(
     "--invoice-prefix <prefix>",
@@ -45,13 +48,10 @@ program.action(async (options) => {
     process.exit(1);
   }
 
-  const endpoint = options.endpoint?.trim() || "";
-  if (!endpoint) {
-    console.error("Missing endpoint. Pass --endpoint=...");
-    process.exit(1);
-  }
+  const endpoint =
+    options.endpoint?.trim() || process.env.HYSOMER_ENDPOINT?.trim() || DEFAULT_INGESTION_ENDPOINT;
 
-  const emailBases = String(options.emailBases || "")
+  const emailBases = String(options.emailBases || process.env.HYSOMER_EMAIL_BASES || "")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
