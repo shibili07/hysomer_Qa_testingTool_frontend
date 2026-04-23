@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node --check server.mjs && node --check scripts/add-real-invoices-hysomer.mjs && node --check scripts/invoice-seed-hysomer-shared.mjs",
     "start": "node server.mjs",
     "seed:once": "node scripts/add-real-invoices-hysomer.mjs"
   },
