@@ -1,21 +1,5 @@
 import { z } from "zod";
 
-export const ProductSchema = z.object({
-  productName: z.string().min(1, "Product name is required"),
-  price: z.number().nonnegative("Unit price must be non-negative"),
-  productId: z.string().optional(),
-  taxAmount: z.number().optional().default(0),
-  discountAmount: z.number().optional().default(0),
-  stock: z.number().int().nonnegative("Stock must be non-negative").default(0)
-});
-
-export type ProductInput = z.infer<typeof ProductSchema>;
-
-export type ProductRecord = ProductInput & {
-  id: string;
-  createdAt?: number;
-  updatedAt?: number;
-};
 
 export const CustomerSchema = z.object({
   customerId: z.string().uuid().optional(),

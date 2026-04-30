@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { syncCustomerExternal } from "@/lib/customers";
 import { createInvoice } from "@/lib/invoices";
 import { listProducts } from "@/lib/products";
-import { CustomerSchema, ProductRecord } from "@/lib/schemas";
+import { CustomerSchema } from "@/lib/schemas";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+
+// Local type for product data from backend (Decoupled from shared lib)
+type ProductRecord = {
+  id: string;
+  _id?: string;
+  productName: string;
+  price: number;
+  productId?: string;
+  taxAmount?: number;
+  discountAmount?: number;
+  stock?: number;
+};
 
 type CartItem = {
   productId: string;
@@ -131,11 +143,14 @@ export default function InvoicePage() {
         email: customerEmail.trim() || null,
         externalCustomerId: null
       });
+
       if (!customerParsed.success) {
         toast.error(customerParsed.error.issues[0]?.message || "Customer details are invalid");
         setLoading(false);
         return;
       }
+
+      // External sync via injection server logic
       const syncResult = await syncCustomerExternal(customerParsed.data, {
         ingestionKey,
         paymentMethod: paymentMethod || null,
@@ -153,6 +168,7 @@ export default function InvoicePage() {
         totalTax: totals.taxTotal,
         totalAmount: totals.grandTotal
       });
+
       if (syncResult.forceRefresh) {
         toast.success(syncResult.successMessage ?? "Invoice queued for processing.");
         setTimeout(() => {

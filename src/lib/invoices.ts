@@ -4,9 +4,19 @@ import {
   CustomerInput,
   InvoiceInput,
   InvoiceItemSchema,
-  InvoiceSchema,
-  ProductRecord
+  InvoiceSchema
 } from "@/lib/schemas";
+
+// Local type for product data needed for invoice calculations
+type ProductRecord = {
+  id: string;
+  _id?: string;
+  productName: string;
+  price: number;
+  taxAmount?: number;
+  discountAmount?: number;
+  productId?: string;
+};
 
 type CartItem = {
   productId: string;

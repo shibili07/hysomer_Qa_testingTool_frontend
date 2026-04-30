@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createProduct, editProduct, listProducts, removeProduct } from "@/lib/products";
-import { ProductRecord, ProductSchema } from "@/lib/schemas";
+import { z } from "zod";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+// Local Product Schema (Decoupled from shared lib for MongoDB migration)
+const ProductSchema = z.object({
+  productName: z.string().min(1, "Product name is required"),
+  price: z.number().nonnegative("Unit price must be non-negative"),
+  productId: z.string().optional(),
+  taxAmount: z.number().optional().default(0),
+  discountAmount: z.number().optional().default(0),
+  stock: z.number().int().nonnegative("Stock must be non-negative").default(0)
+});
+
+type ProductInput = z.infer<typeof ProductSchema>;
+
+type ProductRecord = ProductInput & {
+  id: string;
+  _id?: string;
+  createdAt?: number;
+  updatedAt?: number;
+};
 
 type ProductFormState = {
   productName: string;
@@ -62,7 +81,7 @@ export default function ProductsPage() {
   }, []);
 
   useEffect(() => {
-    if (page > totalPages) {
+    if (page > totalPages && totalPages > 0) {
       setPage(totalPages);
     }
   }, [page, totalPages]);
@@ -103,7 +122,7 @@ export default function ProductsPage() {
       await refreshProducts();
     } catch (error) {
       console.error(error);
-      toast.error("Action failed. Check Firebase rules/connection.");
+      toast.error("Action failed. Check API connection.");
     } finally {
       setLoading(false);
     }
@@ -146,7 +165,7 @@ export default function ProductsPage() {
             <Badge variant="secondary">{products.length} items</Badge>
           </div>
           <CardDescription className="text-slate-200">
-            Add, edit, delete and manage your product catalog from Firebase.
+            Add, edit, delete and manage your product catalog from MongoDB.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -219,7 +238,7 @@ export default function ProductsPage() {
       <Card>
         <CardHeader>
           <CardTitle>All Products</CardTitle>
-          <CardDescription>Live list from Firestore.</CardDescription>
+          <CardDescription>Live list from MongoDB.</CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <Table>
@@ -243,7 +262,7 @@ export default function ProductsPage() {
                   <TableCell>{product.taxAmount ?? 0}</TableCell>
                   <TableCell>{product.discountAmount ?? 0}</TableCell>
                   <TableCell>
-                    <Badge variant={Number(product.stock ?? 0) > 0 ? "success" : "danger"}>{product.stock ?? 0}</Badge>
+                    <Badge variant={Number(product.stock ?? 0) > 0 ? "secondary" : "danger"}>{product.stock ?? 0}</Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -283,4 +302,4 @@ export default function ProductsPage() {
       </Card>
     </section>
   );
-}
+} 
