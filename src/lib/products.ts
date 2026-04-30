@@ -1,52 +1,87 @@
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  orderBy,
-  query,
-  updateDoc
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { ProductInput, ProductRecord, ProductSchema } from "@/lib/schemas";
+import { toast } from "sonner";
 
-const productsCollection = collection(db, "products");
+const API_BASE_URL = "http://localhost:5000/api/products";
 
-const normalizeProduct = (input: ProductInput): ProductInput => {
-  const validated = ProductSchema.parse(input);
-  return {
-    ...validated,
-    productId: validated.productId?.trim() || crypto.randomUUID(),
-    taxAmount: validated.taxAmount ?? 0,
-    discountAmount: validated.discountAmount ?? 0,
-    stock: validated.stock ?? 0
-  };
-};
+export async function listProducts() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/`, {
+      credentials: "include",
+    });
+    
+    const data = await res.json();
+    
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to fetch products");
+    }
+    
+    return data.products || [];
+  } catch (error: any) {
+    console.error("List products error:", error);
+    return [];
+  }
+}
 
-export const listProducts = async (): Promise<ProductRecord[]> => {
-  const q = query(productsCollection, orderBy("productName"));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as ProductInput) }));
-};
+export async function createProduct(productData: any) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(productData),
+      credentials: "include",
+    });
 
-export const createProduct = async (input: ProductInput) => {
-  const product = normalizeProduct(input);
-  await addDoc(productsCollection, {
-    ...product,
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-  });
-};
+    const data = await res.json();
 
-export const editProduct = async (id: string, input: ProductInput) => {
-  const product = normalizeProduct(input);
-  await updateDoc(doc(db, "products", id), {
-    ...product,
-    updatedAt: Date.now()
-  });
-};
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to create product");
+    }
 
-export const removeProduct = async (id: string) => {
-  await deleteDoc(doc(db, "products", id));
-};
+    return data.product;
+  } catch (error: any) {
+    throw error;
+  }
+}
+
+export async function editProduct(id: string, productData: any) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(productData),
+      credentials: "include",
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to update product");
+    }
+
+    return data.product;
+  } catch (error: any) {
+    throw error;
+  }
+}
+
+export async function removeProduct(id: string) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to delete product");
+    }
+
+    return data;
+  } catch (error: any) {
+    throw error;
+  }
+}
