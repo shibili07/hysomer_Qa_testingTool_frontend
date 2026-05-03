@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/products", label: "Products" },
-  { href: "/invoice", label: "Billing / Invoice" }
+  { href: "/invoice", label: "Billing / Invoice" },
+  //  { href: "/login", label: "Login" }
 ];
 
 export function NavLinks() {
