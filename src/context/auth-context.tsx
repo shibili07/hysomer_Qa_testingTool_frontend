@@ -1,8 +1,5 @@
-"use client";
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 interface User {
   id: string;
@@ -22,12 +19,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const checkAuth = async () => {
     try {
       const res = await fetch("http://localhost:5000/api/auth/me", {
-        credentials: "include",
+        credentials: "include"
       });
       if (res.ok) {
         const data = await res.json();
@@ -48,10 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await fetch("http://localhost:5000/api/auth/logout", {
         method: "POST",
-        credentials: "include",
+        credentials: "include"
       });
       setUser(null);
-      router.push("/login");
+      navigate("/login");
     } catch (error) {
       console.error("Logout error", error);
     }

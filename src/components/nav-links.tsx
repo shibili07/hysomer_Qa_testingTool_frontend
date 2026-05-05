@@ -1,33 +1,31 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/products", label: "Products" },
-  { href: "/invoice", label: "Billing / Invoice" },
-  //  { href: "/login", label: "Login" }
+  { to: "/products", label: "Products" },
+  { to: "/invoice", label: "Billing / Invoice" }
 ];
 
 export function NavLinks() {
-  const pathname = usePathname();
+  const location = useLocation();
 
   return (
     <>
       {links.map((link) => {
-        const isActive = pathname === link.href || (link.href === "/products" && pathname === "/");
+        const isActive =
+          location.pathname === link.to || (link.to === "/products" && location.pathname === "/");
 
         return (
           <Link
-            key={link.href}
+            key={link.to}
             className={cn(
               "rounded-xl border px-3 py-2 transition-all",
               isActive
                 ? "border-slate-900 bg-slate-900 text-white shadow-sm"
                 : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             )}
-            href={link.href}
+            to={link.to}
           >
             {link.label}
           </Link>

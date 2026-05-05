@@ -1,12 +1,9 @@
-"use client";
-
-import React, { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Package, FileText, ChevronLeft, Menu, LogOut, ChevronUp, ChevronRight, User } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
-import { useAuth } from '@/context/auth-context';
+import React, { useEffect, useRef, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Package, FileText, ChevronLeft, Menu, LogOut, ChevronUp, ChevronRight, User } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { useAuth } from "@/context/auth-context";
 
 export function Sidebar({
   isCollapsed,
@@ -15,7 +12,7 @@ export function Sidebar({
   isCollapsed: boolean;
   setIsCollapsed: (val: boolean) => void;
 }) {
-  const pathname = usePathname();
+  const location = useLocation();
   const { user, logout } = useAuth();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -40,13 +37,12 @@ export function Sidebar({
   };
 
   const navItems = [
-    { name: 'Products', href: '/products', icon: Package },
-    { name: 'Billing & Invoices', href: '/invoice', icon: FileText },
+    { name: "Products", to: "/products", icon: Package },
+    { name: "Billing & Invoices", to: "/invoice", icon: FileText }
   ];
 
   return (
     <>
-      {/* Mobile overlay */}
       {!isCollapsed && (
         <div
           className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[2px] md:hidden transition-all duration-300"
@@ -62,16 +58,13 @@ export function Sidebar({
           isCollapsed ? "translate-x-[-100%] md:translate-x-0" : "translate-x-0"
         )}
       >
-        {/* Header */}
         <div className="flex items-center justify-between h-20 px-6">
           {!isCollapsed && (
             <div className="flex items-center gap-2 overflow-hidden animate-in fade-in slide-in-from-left-4 duration-500">
               <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-200">
                 <span className="text-white font-bold text-lg">H</span>
               </div>
-              <span className="text-xl font-bold tracking-tight text-slate-900">
-                Hysomer
-              </span>
+              <span className="text-xl font-bold tracking-tight text-slate-900">Hysomer</span>
             </div>
           )}
 
@@ -86,17 +79,17 @@ export function Sidebar({
           </button>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || (item.href === '/products' && pathname === '/');
-            const isProducts = item.name === 'Products';
+            const isActive =
+              location.pathname === item.to || (item.to === "/products" && location.pathname === "/");
+            const isProducts = item.name === "Products";
             const Icon = item.icon;
 
             return (
               <Link
-                key={item.href}
-                href={item.href}
+                key={item.to}
+                to={item.to}
                 className={cn(
                   "relative flex items-center px-4 py-3 rounded-2xl transition-all duration-300 group overflow-hidden",
                   isActive
@@ -108,16 +101,17 @@ export function Sidebar({
                 )}
                 title={isCollapsed ? item.name : undefined}
               >
-                {/* Shining overlay for products when active */}
                 {isActive && isProducts && (
                   <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/25 to-white/0 -translate-x-full animate-sweep pointer-events-none" />
                 )}
 
-                <Icon className={cn(
-                  "w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:scale-110 relative z-10",
-                  isCollapsed ? "mr-0" : "mr-4",
-                  isActive ? "text-white" : "text-slate-400 group-hover:text-indigo-500"
-                )} />
+                <Icon
+                  className={cn(
+                    "w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:scale-110 relative z-10",
+                    isCollapsed ? "mr-0" : "mr-4",
+                    isActive ? "text-white" : "text-slate-400 group-hover:text-indigo-500"
+                  )}
+                />
 
                 {!isCollapsed && (
                   <>
@@ -132,10 +126,7 @@ export function Sidebar({
           })}
         </nav>
 
-
-        {/* User Section */}
         <div className="p-4 border-t border-slate-50 relative" ref={menuRef}>
-          {/* User Profile Card */}
           <button
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
             className={cn(
@@ -162,23 +153,27 @@ export function Sidebar({
               )}
             </div>
             {!isCollapsed && (
-              <ChevronUp className={cn(
-                "w-4 h-4 text-slate-300 transition-all duration-500 ease-out",
-                isUserMenuOpen ? "rotate-180 text-indigo-500" : "group-hover:text-slate-500"
-              )} />
+              <ChevronUp
+                className={cn(
+                  "w-4 h-4 text-slate-300 transition-all duration-500 ease-out",
+                  isUserMenuOpen ? "rotate-180 text-indigo-500" : "group-hover:text-slate-500"
+                )}
+              />
             )}
           </button>
 
-          {/* User Dropdown Menu */}
           {isUserMenuOpen && (
-            <div className={cn(
-              "absolute bottom-[calc(100%+8px)] left-4 right-4 p-2 bg-white border border-slate-100 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] animate-in fade-in slide-in-from-bottom-4 duration-300 z-[60] backdrop-blur-xl bg-white/90",
-              isCollapsed && "w-[200px] left-[calc(100%+12px)] right-auto bottom-4"
-            )}>
+            <div
+              className={cn(
+                "absolute bottom-[calc(100%+8px)] left-4 right-4 p-2 bg-white border border-slate-100 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] animate-in fade-in slide-in-from-bottom-4 duration-300 z-[60] backdrop-blur-xl bg-white/90",
+                isCollapsed && "w-[200px] left-[calc(100%+12px)] right-auto bottom-4"
+              )}
+            >
               <div className="px-3 py-2 mb-1 border-b border-slate-50">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Account Settings</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  Account Settings
+                </p>
               </div>
-
 
               <button
                 onClick={handleLogout}
@@ -191,11 +186,9 @@ export function Sidebar({
               </button>
             </div>
           )}
-
         </div>
       </aside>
 
-      {/* Toggle button for mobile when collapsed */}
       {isCollapsed && (
         <button
           onClick={() => setIsCollapsed(false)}
@@ -207,5 +200,3 @@ export function Sidebar({
     </>
   );
 }
-
-

@@ -1,13 +1,11 @@
-"use client";
-
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, EyeOff, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 export default function LoginPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [email, setemail] = useState<string>("");
   const [password, setpassword] = useState<string>("");
   const [emailError, setEmailError] = useState<string>("");
@@ -78,7 +76,7 @@ export default function LoginPage() {
         localStorage.setItem("token", data.token);
         
         setTimeout(() => {
-          router.push("/products");
+          navigate("/products");
         }, 800);
       }
     } catch (error) {
