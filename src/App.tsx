@@ -7,18 +7,20 @@ import ProductsPage from "@/pages/ProductsPage";
 import InvoicePage from "@/pages/InvoicePage";
 import CustomerPage from "@/pages/CustomersPage";
 import LoginPage from "@/pages/LoginPage";
+import SupermarketsPage from "@/pages/SupermarketsPage";
 
 export default function App() {
   return (
     <AuthProvider>
       <AuthWrapper>
         <SidebarLayout>
-          <main className="mx-auto max-w-6xl w-full p-4 md:p-6">
+          <main className="w-full p-4 md:p-10">
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/products" element={<ProductsPage />} />
               <Route path="/invoice" element={<InvoicePage />} />
               <Route path="/customers" element={<CustomerPage />} />
+              <Route path="/supermarkets" element={<SupermarketsPage />} />
               <Route path="/" element={<Navigate to="/products" replace />} />
               <Route path="*" element={<Navigate to="/products" replace />} />
             </Routes>

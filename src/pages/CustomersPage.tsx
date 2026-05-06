@@ -68,29 +68,28 @@ export default function CustomerPage() {
   };
 
   return (
-    <section className="space-y-6 max-w-4xl mx-auto">
-      {/* Premium Header */}
-      <Card className="bg-gradient-to-r from-slate-900 via-indigo-900 to-violet-800 text-white border-0 shadow-xl overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
-        <CardHeader>
-          <div className="flex items-center gap-2 relative z-10">
-            <CardTitle className="text-white text-2xl">Customers</CardTitle>
-            <Badge variant="secondary" className="bg-white text-slate-900 border-0 font-bold px-3">
-              Management
-            </Badge>
+    <section className="mx-auto max-w-[1200px] space-y-8">
+      <div className="flex flex-col gap-5 border-b border-zinc-200 pb-7 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+            <span className="h-1.5 w-1.5 rounded-full bg-zinc-950" />
+            Customer Terminal
           </div>
-          <CardDescription className="text-slate-300 relative z-10">
-            Register new customers and synchronize their data with external billing systems.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-zinc-950 md:text-3xl">Customers</h1>
+          <p className="mt-2 text-base font-medium text-zinc-500">
+            Register customers and synchronize records with external billing systems.
+          </p>
+        </div>
+        <Badge variant="secondary" className="w-fit rounded-xl px-4 py-3">
+          Management
+        </Badge>
+      </div>
 
       <div className="grid gap-6 md:grid-cols-5">
-        {/* Registration Form */}
-        <Card className="md:col-span-3 border-slate-100 shadow-sm">
+        <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-indigo-500" />
+              <UserPlus className="h-5 w-5 text-zinc-500" />
               Customer Registration
             </CardTitle>
             <CardDescription>Enter the customer's primary contact information.</CardDescription>
@@ -98,21 +97,20 @@ export default function CustomerPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                  <User className="w-4 h-4 text-slate-400" /> Full Name
+                <label className="flex items-center gap-2 text-sm font-semibold text-zinc-700">
+                  <User className="h-4 w-4 text-zinc-400" /> Full Name
                 </label>
                 <Input
                   placeholder="John Doe"
                   value={formData.name || ""}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="focus:ring-indigo-500/20"
                 />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-slate-400" /> Phone Number
+                  <label className="flex items-center gap-2 text-sm font-semibold text-zinc-700">
+                    <Phone className="h-4 w-4 text-zinc-400" /> Phone Number
                   </label>
                   <Input
                     placeholder="+1 234 567 890"
@@ -122,8 +120,8 @@ export default function CustomerPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-slate-400" /> Email Address
+                  <label className="flex items-center gap-2 text-sm font-semibold text-zinc-700">
+                    <Mail className="h-4 w-4 text-zinc-400" /> Email Address
                   </label>
                   <Input
                     type="email"
@@ -137,12 +135,12 @@ export default function CustomerPage() {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-6 rounded-xl transition-all shadow-lg shadow-slate-200"
+                className="h-12 w-full rounded-2xl"
               >
                 {isSubmitting ? (
-                  <RefreshCw className="w-5 h-5 animate-spin mr-2" />
+                  <RefreshCw className="h-5 w-5 animate-spin" />
                 ) : (
-                  <UserPlus className="w-5 h-5 mr-2" />
+                  <UserPlus className="h-5 w-5" />
                 )}
                 {isSubmitting ? "Processing..." : "Create Customer Record"}
               </Button>
@@ -150,8 +148,7 @@ export default function CustomerPage() {
           </CardContent>
         </Card>
 
-        {/* Status & Sync Card */}
-        <Card className="md:col-span-2 border-slate-100 shadow-sm bg-slate-50/50">
+        <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg">Recent Activity</CardTitle>
             <CardDescription>Actions for the last created customer.</CardDescription>
@@ -159,45 +156,45 @@ export default function CustomerPage() {
           <CardContent>
             {lastCreatedCustomer ? (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-                <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                      <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 ring-1 ring-emerald-200">
+                      <CheckCircle2 className="h-6 w-6 text-emerald-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900">{lastCreatedCustomer.name}</p>
-                      <p className="text-[11px] font-medium text-slate-400 truncate max-w-[150px]">
+                      <p className="text-sm font-semibold text-zinc-950">{lastCreatedCustomer.name}</p>
+                      <p className="max-w-[150px] truncate text-[11px] font-medium text-zinc-500">
                         ID: {lastCreatedCustomer.id}
                       </p>
-                      <Badge className="mt-2 bg-emerald-500 hover:bg-emerald-600">Created</Badge>
+                      <Badge variant="success" className="mt-2">Created</Badge>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest px-1">Available Actions</p>
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Available Actions</p>
                   <Button
                     onClick={handleSync}
                     disabled={isSubmitting}
                     variant="secondary"
-                    className="w-full py-6 border-2 border-dashed border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 transition-all rounded-2xl group"
+                    className="group h-14 w-full rounded-2xl border-dashed"
                   >
-                    <div className="flex items-center justify-between w-full px-2">
+                    <div className="flex w-full items-center justify-between px-2">
                       <div className="flex items-center">
-                        <RefreshCw className={cn("w-5 h-5 mr-3 text-slate-400 group-hover:text-indigo-500", isSubmitting && "animate-spin")} />
-                        <span className="text-slate-600 group-hover:text-indigo-700 font-bold">Sync Externally</span>
+                        <RefreshCw className={cn("mr-3 h-5 w-5 text-zinc-400 group-hover:text-zinc-950", isSubmitting && "animate-spin")} />
+                        <span className="font-semibold text-zinc-700 group-hover:text-zinc-950">Sync Externally</span>
                       </div>
-                      <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-400 transition-transform group-hover:translate-x-1" />
+                      <ArrowRight className="h-4 w-4 text-zinc-300 transition-transform group-hover:translate-x-1 group-hover:text-zinc-950" />
                     </div>
                   </Button>
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
-                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
-                  <User className="w-8 h-8 text-slate-300" />
+              <div className="flex flex-col items-center justify-center space-y-3 py-14 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-100">
+                  <User className="h-8 w-8 text-zinc-300" />
                 </div>
-                <p className="text-sm text-slate-400 font-medium">No recent customer created.<br />Fill out the form to begin.</p>
+                <p className="text-sm font-medium text-zinc-400">No recent customer created.<br />Fill out the form to begin.</p>
               </div>
             )}
           </CardContent>

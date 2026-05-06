@@ -1,17 +1,16 @@
-"use client";
-
-import { Button } from "@/components/ui/button";
+import React from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "./button";
 import { cn } from "@/lib/utils";
 
-type PaginationProps = {
+interface PaginationProps {
   page: number;
   totalPages: number;
   totalItems: number;
   pageSize: number;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
-  className?: string;
-};
+}
 
 export function Pagination({
   page,
@@ -20,69 +19,75 @@ export function Pagination({
   pageSize,
   onPageChange,
   onPageSizeChange,
-  className
 }: PaginationProps) {
-  if (!totalItems) return null;
-
-  const start = (page - 1) * pageSize + 1;
-  const end = Math.min(page * pageSize, totalItems);
-
-  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1).slice(
-    Math.max(0, page - 3),
-    Math.max(5, Math.min(totalPages, page + 2))
-  );
-
   return (
-    <div className={cn("flex flex-col gap-3 md:flex-row md:items-center md:justify-between", className)}>
-      <p className="text-sm text-slate-500">
-        Showing <span className="font-medium text-slate-700">{start}</span> to{" "}
-        <span className="font-medium text-slate-700">{end}</span> of{" "}
-        <span className="font-medium text-slate-700">{totalItems}</span> items
-      </p>
-
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col items-center justify-between gap-4 px-2 py-4 sm:flex-row">
+      <div className="flex items-center gap-2 text-sm text-zinc-500 font-medium">
+        <span>Rows per page:</span>
         <select
-          className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-xs text-slate-700"
           value={pageSize}
           onChange={(e) => onPageSizeChange(Number(e.target.value))}
+          className="h-8 rounded-md border border-zinc-200 bg-white px-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-zinc-950/10"
         >
-          {[5, 10, 20, 50].map((size) => (
+          {[10, 20, 50, 100].map((size) => (
             <option key={size} value={size}>
-              {size}/page
+              {size}
             </option>
           ))}
         </select>
+        <span className="ml-4">
+          Showing <span className="font-bold text-zinc-950">{(page - 1) * pageSize + 1}</span> to{" "}
+          <span className="font-bold text-zinc-950">{Math.min(page * pageSize, totalItems)}</span> of{" "}
+          <span className="font-bold text-zinc-950">{totalItems}</span>
+        </span>
+      </div>
 
+      <div className="flex items-center gap-1">
         <Button
-          type="button"
-          size="sm"
           variant="secondary"
-          disabled={page <= 1}
+          className="h-8 w-8 p-0 rounded-lg"
           onClick={() => onPageChange(page - 1)}
+          disabled={page <= 1}
         >
-          Previous
+          <ChevronLeft className="h-4 w-4" />
         </Button>
+        
+        <div className="flex items-center gap-1 px-2">
+          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+            let pageNum: number;
+            if (totalPages <= 5) {
+              pageNum = i + 1;
+            } else if (page <= 3) {
+              pageNum = i + 1;
+            } else if (page >= totalPages - 2) {
+              pageNum = totalPages - 4 + i;
+            } else {
+              pageNum = page - 2 + i;
+            }
 
-        {pageNumbers.map((pageNumber) => (
-          <Button
-            key={pageNumber}
-            type="button"
-            size="sm"
-            variant={pageNumber === page ? "default" : "secondary"}
-            onClick={() => onPageChange(pageNumber)}
-          >
-            {pageNumber}
-          </Button>
-        ))}
+            return (
+              <Button
+                key={pageNum}
+                variant={page === pageNum ? "default" : "secondary"}
+                className={cn(
+                  "h-8 w-8 p-0 rounded-lg text-xs",
+                  page === pageNum ? "bg-zinc-950 text-white" : "bg-transparent hover:bg-zinc-100"
+                )}
+                onClick={() => onPageChange(pageNum)}
+              >
+                {pageNum}
+              </Button>
+            );
+          })}
+        </div>
 
         <Button
-          type="button"
-          size="sm"
           variant="secondary"
-          disabled={page >= totalPages}
+          className="h-8 w-8 p-0 rounded-lg"
           onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages}
         >
-          Next
+          <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
     </div>

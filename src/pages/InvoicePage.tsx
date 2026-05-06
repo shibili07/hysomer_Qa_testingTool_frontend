@@ -5,6 +5,7 @@ import { createInvoice } from "@/lib/invoices";
 import { listProducts } from "@/lib/products";
 import { CustomerSchema } from "@/lib/schemas";
 import { toast } from "sonner";
+import { CreditCard, Plus, Receipt, ShoppingCart, Trash2, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -201,42 +202,62 @@ export default function InvoicePage() {
   };
 
   return (
-    <section className="space-y-6">
-      <Card className="bg-gradient-to-r from-indigo-700 to-violet-800 text-white border-0">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-white">Billing</CardTitle>
-            <Badge variant="secondary">{itemRows.length} line items</Badge>
+    <section className="mx-auto max-w-[1500px] space-y-8">
+      <div className="flex flex-col gap-5 border-b border-zinc-200 pb-7 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+            <span className="h-1.5 w-1.5 rounded-full bg-zinc-950" />
+            Sales Terminal
           </div>
-          <CardDescription className="text-indigo-100">Create invoice, sync to external API, and store in Firebase.</CardDescription>
-        </CardHeader>
-      </Card>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-zinc-950 md:text-3xl">Billing Dashboard</h1>
+          <p className="mt-2 text-base font-medium text-zinc-500">
+            Create invoices, synchronize customers, and capture payment details.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge variant="secondary" className="rounded-xl px-4 py-3">
+            {itemRows.length} line items
+          </Badge>
+          <Button className="h-12 rounded-2xl px-6" onClick={saveInvoice} disabled={loading || !itemRows.length}>
+            <Receipt className="h-4 w-4" />
+            Create Invoice
+          </Button>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>1) Customer</CardTitle>
-          <CardDescription>Enter customer details (optional).</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3">
-          <Input placeholder="Customer Name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-          <Input placeholder="Phone Number" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
-          <Input
-            placeholder="Email (optional)"
-            value={customerEmail}
-            onChange={(e) => setCustomerEmail(e.target.value)}
-          />
-        </CardContent>
-      </Card>
+      <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+        <div className="space-y-5">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserRound className="h-5 w-5 text-zinc-500" />
+                Customer
+              </CardTitle>
+              <CardDescription>Enter customer details for the invoice record.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 md:grid-cols-3">
+              <Input placeholder="Customer Name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+              <Input placeholder="Phone Number" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+              <Input
+                placeholder="Email (optional)"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+              />
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>2) Add Items</CardTitle>
-          <CardDescription>Select products and build invoice lines.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-2 md:flex-row">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5 text-zinc-500" />
+                Invoice Items
+              </CardTitle>
+              <CardDescription>Select products and build invoice lines.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="flex flex-col gap-3 md:flex-row">
             <select
-              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 md:min-w-72"
+              className="h-11 rounded-xl border border-zinc-200 bg-white px-3.5 text-sm font-medium text-zinc-950 shadow-sm focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-zinc-200/70 md:min-w-80"
               value={selectedProductId}
               onChange={(e) => setSelectedProductId(e.target.value)}
             >
@@ -247,12 +268,13 @@ export default function InvoicePage() {
                 </option>
               ))}
             </select>
-            <Button onClick={addProductToBill} disabled={loading}>
+            <Button onClick={addProductToBill} disabled={loading} type="button">
+              <Plus className="h-4 w-4" />
               Add To Bill
             </Button>
           </div>
 
-          <div className="overflow-x-auto">
+              <div className="overflow-x-auto rounded-2xl border border-zinc-200">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -285,7 +307,8 @@ export default function InvoicePage() {
                       <Badge>{format(row.lineTotal)}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Button className="h-8 px-3" variant="destructive" onClick={() => removeFromBill(row.product.id)}>
+                      <Button className="h-9 px-3" variant="destructive" onClick={() => removeFromBill(row.product.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
                         Remove
                       </Button>
                     </TableCell>
@@ -301,25 +324,41 @@ export default function InvoicePage() {
               </TableBody>
             </Table>
           </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>3) Finalize Invoice</CardTitle>
-          <CardDescription>Set payment details and generate invoice.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
-            <p>Subtotal: {format(totals.subtotal)}</p>
-            <p>Tax Total: {format(totals.taxTotal)}</p>
-            <p>Discount Total: {format(totals.discountTotal)}</p>
-            <p className="text-lg font-bold text-slate-900">Grand Total: {format(totals.grandTotal)}</p>
-          </div>
+        <Card className="h-fit lg:sticky lg:top-24">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-zinc-500" />
+              Payment
+            </CardTitle>
+            <CardDescription>Finalize totals and payment details.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm font-semibold text-zinc-600">
+              <div className="flex items-center justify-between py-1.5">
+                <span>Subtotal</span>
+                <span className="tabular-nums text-zinc-950">{format(totals.subtotal)}</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span>Tax Total</span>
+                <span className="tabular-nums text-zinc-950">{format(totals.taxTotal)}</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span>Discount</span>
+                <span className="tabular-nums text-zinc-950">{format(totals.discountTotal)}</span>
+              </div>
+              <div className="mt-3 flex items-end justify-between border-t border-zinc-200 pt-4">
+                <span>Grand Total</span>
+                <span className="text-xl font-bold tracking-tight text-zinc-950">{format(totals.grandTotal)}</span>
+              </div>
+            </div>
 
-          <div className="grid gap-2">
+            <div className="grid gap-3">
             <select
-              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+              className="h-11 rounded-xl border border-zinc-200 bg-white px-3.5 text-sm font-medium text-zinc-950 shadow-sm focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-zinc-200/70"
               value={status}
               onChange={(e) => setStatus(e.target.value as typeof status)}
             >
@@ -329,7 +368,7 @@ export default function InvoicePage() {
               <option value="REFUNDED">REFUNDED</option>
             </select>
             <select
-              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+              className="h-11 rounded-xl border border-zinc-200 bg-white px-3.5 text-sm font-medium text-zinc-950 shadow-sm focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-zinc-200/70"
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)}
             >
@@ -347,12 +386,14 @@ export default function InvoicePage() {
               onChange={(e) => setIngestionKey(e.target.value)}
             />
             <Textarea placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
-            <Button onClick={saveInvoice} disabled={loading}>
+            <Button className="mt-1 h-12 rounded-2xl" onClick={saveInvoice} disabled={loading}>
+              <Receipt className="h-4 w-4" />
               Create Invoice
             </Button>
           </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </section>
   );
 }

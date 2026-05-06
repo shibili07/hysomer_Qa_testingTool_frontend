@@ -1,7 +1,8 @@
-import { addDoc, collection } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { CustomerInput, CustomerSchema } from "@/lib/schemas";
 export type { CustomerInput };
+
+const API_BASE_URL = "http://localhost:5000/api/customers";
+
 
 export async function createCustomer(input: CustomerInput) {
   const validated = CustomerSchema.parse(input);
@@ -10,13 +11,26 @@ export async function createCustomer(input: CustomerInput) {
   const payload = {
     ...validated,
     customerId,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
   };
 
-  await addDoc(collection(db, "customers"), payload);
-  return payload;
+  const res = await fetch(`${API_BASE_URL}/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.message || "Failed to create customer");
+  }
+
+  const data = await res.json();
+  return data.customer;
 }
+
 
 /**
  * Legacy sync for existing customers

@@ -2,6 +2,7 @@
 import { FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import {
   Boxes,
+  CalendarDays,
   DollarSign,
   Hash,
   LayoutList,
@@ -9,6 +10,7 @@ import {
   Package,
   PencilLine,
   Percent,
+  Plus,
   Receipt,
   Sparkles
 } from "lucide-react";
@@ -21,7 +23,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 
 // Local Product Schema (Decoupled from shared lib for MongoDB migration)
 const ProductSchema = z.object({
@@ -62,7 +63,36 @@ const emptyForm: ProductFormState = {
 
 function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 px-0.5">{children}</p>
+    <p className="px-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">{children}</p>
+  );
+}
+
+function MetricCard({
+  icon: Icon,
+  label,
+  value,
+  trend
+}: {
+  icon: typeof Package;
+  label: string;
+  value: string;
+  trend: string;
+}) {
+  return (
+    <Card className="min-h-[160px]">
+      <CardContent className="flex h-full flex-col justify-between p-6">
+        <div className="flex items-start gap-4">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-zinc-50 text-zinc-600 shadow-sm">
+            <Icon className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-zinc-900">{label}</p>
+            <p className="mt-1 text-xs font-medium text-zinc-400">{trend}</p>
+          </div>
+        </div>
+        <p className="mt-8 text-2xl font-bold tracking-tight text-zinc-950">{value}</p>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -80,15 +110,26 @@ export default function ProductsPage() {
     () => products.slice((page - 1) * pageSize, page * pageSize),
     [products, page, pageSize]
   );
-
-  const draftPreview = useMemo(() => {
-    const name = form.productName.trim() || "Untitled product";
-    const priceNum = form.price === "" ? null : Number(form.price);
-    const stockNum = form.stock === "" ? null : Number(form.stock);
-    const taxNum = form.taxAmount === "" ? null : Number(form.taxAmount);
-    const discNum = form.discountAmount === "" ? null : Number(form.discountAmount);
-    return { name, priceNum, stockNum, taxNum, discNum };
-  }, [form]);
+  const totalStock = useMemo(
+    () => products.reduce((sum, product) => sum + Number(product.stock ?? 0), 0),
+    [products]
+  );
+  const inventoryValue = useMemo(
+    () => products.reduce((sum, product) => sum + Number(product.price ?? 0) * Number(product.stock ?? 0), 0),
+    [products]
+  );
+  const averagePrice = products.length
+    ? products.reduce((sum, product) => sum + Number(product.price ?? 0), 0) / products.length
+    : 0;
+  const money = useMemo(
+    () =>
+      new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0
+      }),
+    []
+  );
 
   const refreshProducts = async () => {
     const data = await listProducts();
@@ -183,34 +224,46 @@ export default function ProductsPage() {
     }
   };
 
-  const hasDraftInput =
-    form.productName.trim() !== "" ||
-    form.price !== "" ||
-    form.productId.trim() !== "" ||
-    form.taxAmount !== "" ||
-    form.discountAmount !== "" ||
-    form.stock !== "";
-
   return (
-    <section className="space-y-6 max-w-6xl mx-auto">
-      <Card className="bg-gradient-to-r from-slate-900 via-indigo-900 to-violet-800 text-white border-0 shadow-xl overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-500/20 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl" />
-        <CardHeader className="relative z-10">
-          <div className="flex flex-wrap items-center gap-3">
-            <CardTitle className="text-white text-2xl tracking-tight">Products</CardTitle>
-            <Badge variant="secondary" className="bg-white/15 text-white border-white/20 hover:bg-white/20 font-semibold">
-              {products.length} in catalog
-            </Badge>
+    <section className="mx-auto max-w-[1500px] space-y-8">
+      <div className="flex flex-col gap-5 border-b border-zinc-200 pb-7 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+            <span className="h-1.5 w-1.5 rounded-full bg-zinc-950" />
+            Catalog Terminal
           </div>
-          <CardDescription className="text-slate-300 max-w-2xl">
-            Create and maintain POS-ready items with pricing, tax, discounts, and stock—all synced with your backend.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-zinc-950 md:text-3xl">Products Dashboard</h1>
+          <p className="mt-2 text-base font-medium text-zinc-500">
+            Monitor stock, pricing, tax, discounts, and POS-ready catalog records.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex h-12 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+            <div className="flex items-center gap-2 border-r border-zinc-200 px-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+              <CalendarDays className="h-4 w-4" />
+              Period
+            </div>
+            <div className="flex items-center px-5 text-sm font-semibold text-zinc-950">This Month</div>
+          </div>
+          <Button
+            className="h-12 rounded-2xl px-6"
+            type="button"
+            onClick={() => document.getElementById("product-form")?.scrollIntoView({ behavior: "smooth" })}
+          >
+            <Plus className="h-4 w-4" />
+            Add Product
+          </Button>
+        </div>
+      </div>
 
-      <div className="grid gap-6 md:grid-cols-5">
-        <Card className="md:col-span-3 border-slate-100 shadow-sm">
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard icon={Package} label="Products" value={String(products.length)} trend="Items tracked in catalog" />
+        <MetricCard icon={Boxes} label="Stock On Hand" value={String(totalStock)} trend="Total available units" />
+        <MetricCard icon={DollarSign} label="Inventory Value" value={money.format(inventoryValue)} trend="Price multiplied by stock" />
+        <MetricCard icon={Percent} label="Average Price" value={money.format(averagePrice)} trend="Across active products" />
+      </div>
+
+      <Card id="product-form" className="border-zinc-200 shadow-sm">
           <CardHeader className="space-y-1">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
@@ -242,7 +295,7 @@ export default function ProductsPage() {
                     Display name
                   </label>
                   <Input
-                    placeholder="e.g. Artisan cold brew — 12 oz"
+                    placeholder="e.g. Artisan cold brew - 12 oz"
                     value={form.productName}
                     onChange={(e) => setForm((prev) => ({ ...prev, productName: e.target.value }))}
                     className="focus-visible:ring-2 focus-visible:ring-indigo-500/25"
@@ -349,7 +402,7 @@ export default function ProductsPage() {
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving…
+                      Saving...
                     </>
                   ) : (
                     <>
@@ -363,90 +416,13 @@ export default function ProductsPage() {
           </CardContent>
         </Card>
 
-        <Card className="md:col-span-2 border-slate-100 shadow-sm bg-slate-50/60">
-          <CardHeader>
-            <CardTitle className="text-lg">Live preview</CardTitle>
-            <CardDescription>How this item will read on invoices and at the register.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {hasDraftInput || editingId ? (
-              <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-slate-900 leading-snug">{draftPreview.name}</p>
-                    {form.productId.trim() ? (
-                      <p className="text-xs font-medium text-slate-400 mt-1">SKU {form.productId.trim()}</p>
-                    ) : (
-                      <p className="text-xs font-medium text-slate-400 mt-1">SKU auto-assigned</p>
-                    )}
-                  </div>
-                  {draftPreview.priceNum !== null && !Number.isNaN(draftPreview.priceNum) ? (
-                    <Badge className="shrink-0 bg-slate-900 hover:bg-slate-800 tabular-nums">
-                      ${draftPreview.priceNum.toFixed(2)}
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="shrink-0">
-                      Set price
-                    </Badge>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-xl bg-slate-50 px-3 py-2">
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Tax</p>
-                    <p className="font-medium text-slate-800 tabular-nums">
-                      {draftPreview.taxNum !== null && !Number.isNaN(draftPreview.taxNum)
-                        ? `$${draftPreview.taxNum.toFixed(2)}`
-                        : "—"}
-                    </p>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 px-3 py-2">
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Discount</p>
-                    <p className="font-medium text-slate-800 tabular-nums">
-                      {draftPreview.discNum !== null && !Number.isNaN(draftPreview.discNum)
-                        ? `$${draftPreview.discNum.toFixed(2)}`
-                        : "—"}
-                    </p>
-                  </div>
-                  <div className="col-span-2 rounded-xl bg-slate-50 px-3 py-2 flex items-center justify-between">
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Stock</p>
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                        draftPreview.stockNum !== null &&
-                          !Number.isNaN(draftPreview.stockNum) &&
-                          draftPreview.stockNum > 0
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-amber-100 text-amber-900"
-                      )}
-                    >
-                      {draftPreview.stockNum !== null && !Number.isNaN(draftPreview.stockNum)
-                        ? `${draftPreview.stockNum} units`
-                        : "Not set → 0"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-14 text-center space-y-3 px-2">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-inner border border-slate-100">
-                  <LayoutList className="h-8 w-8 text-slate-300" />
-                </div>
-                <p className="text-sm text-slate-500 font-medium max-w-[220px]">
-                  Start typing on the left to see a card-style preview of your new product.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
       <Card className="border-slate-100 shadow-sm overflow-hidden">
         <CardHeader className="border-b border-slate-100 bg-slate-50/40">
           <CardTitle className="flex items-center gap-2 text-xl">
             <LayoutList className="h-5 w-5 text-indigo-500" />
             Catalog
           </CardTitle>
-          <CardDescription>Live list from your API — paginate, edit inline actions, or remove rows.</CardDescription>
+          <CardDescription>Live list from your API - paginate, edit inline actions, or remove rows.</CardDescription>
         </CardHeader>
         <CardContent className="p-0 sm:p-0">
           <div className="overflow-x-auto">
@@ -469,7 +445,7 @@ export default function ProductsPage() {
                   <TableRow key={product.id} className="border-slate-100">
                     <TableCell className="font-medium text-slate-900">{product.productName}</TableCell>
                     <TableCell className="tabular-nums text-slate-700">${Number(product.price).toFixed(2)}</TableCell>
-                    <TableCell className="text-slate-600">{product.productId || "—"}</TableCell>
+                    <TableCell className="text-slate-600">{product.productId || "-"}</TableCell>
                     <TableCell className="tabular-nums text-slate-600">{product.taxAmount ?? 0}</TableCell>
                     <TableCell className="tabular-nums text-slate-600">{product.discountAmount ?? 0}</TableCell>
                     <TableCell>
@@ -519,7 +495,7 @@ export default function ProductsPage() {
               totalItems={products.length}
               pageSize={pageSize}
               onPageChange={setPage}
-              onPageSizeChange={(size) => {
+              onPageSizeChange={(size: number) => {
                 setPageSize(size);
                 setPage(1);
               }}
@@ -530,3 +506,4 @@ export default function ProductsPage() {
     </section>
   );
 }
+

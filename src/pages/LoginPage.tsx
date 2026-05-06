@@ -165,13 +165,13 @@ export default function LoginPage() {
         <div className="w-full md:w-[55%] p-8 sm:p-12 lg:p-16 flex flex-col justify-center relative bg-white">
           <div className="w-full max-w-[380px] mx-auto">
             <div className="mb-8">
-              <h2 className="text-[26px] font-bold text-slate-900 tracking-tight mb-2">Welcome Back</h2>
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight mb-2">Welcome Back</h2>
               <p className="text-[14px] text-slate-500">Please enter your credentials to access</p>
             </div>
 
             <form className="space-y-6" onSubmit={handleLogin}>
               <div className="space-y-2">
-                <label className={cn("text-[13px] font-bold block transition-colors", emailError ? "text-red-500" : "text-slate-700")}>Email Address</label>
+                <label className={cn("text-[13px] font-semibold block transition-colors", emailError ? "text-red-500" : "text-slate-700")}>Email Address</label>
                 <div className="relative">
                   <Mail className={cn("absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors", emailError ? "text-red-400" : "text-slate-400")} strokeWidth={2.5} />
                   <input 
@@ -194,7 +194,7 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <label className={cn("text-[13px] font-bold block transition-colors", passwordError ? "text-red-500" : "text-slate-700")}>Password</label>
+                <label className={cn("text-[13px] font-semibold block transition-colors", passwordError ? "text-red-500" : "text-slate-700")}>Password</label>
                 <div className="relative">
                   <Lock className={cn("absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors", passwordError ? "text-red-400" : "text-slate-400")} strokeWidth={2.5} />
                   <input 

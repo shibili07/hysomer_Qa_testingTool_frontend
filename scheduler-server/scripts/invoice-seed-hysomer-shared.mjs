@@ -18,105 +18,53 @@ const paymentMethods = [
   { value: "OTHER", weight: 2 }
 ];
 
-const productCatalog = {
-  staples: [
-    { name: "Nirapara Matta Rice 5kg", unitPrice: 560, unit: "5 kg" },
-    { name: "Pavizham Jaya Rice 5kg", unitPrice: 490, unit: "5 kg" },
-    { name: "Double Horse Atta 1kg", unitPrice: 62, unit: "1 kg" },
-    { name: "Brahmins Rava 1kg", unitPrice: 70, unit: "1 kg" },
-    { name: "Ajmi Wheat Flour 1kg", unitPrice: 54, unit: "1 kg" },
-    { name: "Toor Dal 1kg", unitPrice: 150, unit: "1 kg" },
-    { name: "Moong Dal 1kg", unitPrice: 138, unit: "1 kg" }
-  ],
-  breakfast: [
-    { name: "Modern Bread 400g", unitPrice: 48, unit: "400 g" },
-    { name: "Kissan Mixed Fruit Jam 500g", unitPrice: 165, unit: "500 g" },
-    { name: "Amul Butter 100g", unitPrice: 64, unit: "100 g" },
-    { name: "Milma Toned Milk 1L", unitPrice: 60, unit: "1 L" },
-    { name: "Eggs 6pcs", unitPrice: 52, unit: "6 pcs" },
-    { name: "Double Horse Puttu Podi 1kg", unitPrice: 84, unit: "1 kg" }
-  ],
-  teaTime: [
-    { name: "Kanan Devan Tea 500g", unitPrice: 278, unit: "500 g" },
-    { name: "Brooke Bond Red Label 250g", unitPrice: 152, unit: "250 g" },
-    { name: "Sugar 1kg", unitPrice: 48, unit: "1 kg" },
-    { name: "Parle-G Biscuit 800g", unitPrice: 88, unit: "800 g" },
-    { name: "Ajmi Rusk 400g", unitPrice: 74, unit: "400 g" },
-    { name: "Britannia Marie Gold 250g", unitPrice: 42, unit: "250 g" }
-  ],
-  snacks: [
-    { name: "Banana Chips Salted 200g", unitPrice: 95, unit: "200 g" },
-    { name: "Jackfruit Chips 150g", unitPrice: 110, unit: "150 g" },
-    { name: "Kurkure Masala Munch 90g", unitPrice: 22, unit: "90 g" },
-    { name: "Lays Classic 52g", unitPrice: 20, unit: "52 g" },
-    { name: "Coca-Cola 750ml", unitPrice: 40, unit: "750 ml" },
-    { name: "Sprite 750ml", unitPrice: 40, unit: "750 ml" }
-  ],
-  masalaOil: [
-    { name: "Eastern Meat Masala 100g", unitPrice: 62, unit: "100 g" },
-    { name: "Eastern Fish Masala 100g", unitPrice: 58, unit: "100 g" },
-    { name: "Aachi Chilli Powder 500g", unitPrice: 160, unit: "500 g" },
-    { name: "Coconut Oil 1L", unitPrice: 215, unit: "1 L" },
-    { name: "Sunflower Oil 1L", unitPrice: 175, unit: "1 L" },
-    { name: "Turmeric Powder 200g", unitPrice: 62, unit: "200 g" }
-  ],
-  personalCare: [
-    { name: "Clinic Plus Shampoo 340ml", unitPrice: 198, unit: "340 ml" },
-    { name: "Dove Soap 3x100g", unitPrice: 138, unit: "3 pcs" },
-    { name: "Colgate Strong Teeth 200g", unitPrice: 112, unit: "200 g" },
-    { name: "Dettol Handwash 200ml", unitPrice: 95, unit: "200 ml" },
-    { name: "Surf Excel Easy Wash 1kg", unitPrice: 168, unit: "1 kg" }
-  ],
-  produce: [
-    { name: "Onion 1kg", unitPrice: 46, unit: "1 kg" },
-    { name: "Tomato 1kg", unitPrice: 38, unit: "1 kg" },
-    { name: "Potato 1kg", unitPrice: 42, unit: "1 kg" },
-    { name: "Banana Nendran 1kg", unitPrice: 64, unit: "1 kg" },
-    { name: "Green Chilli 250g", unitPrice: 22, unit: "250 g" },
-    { name: "Coriander Leaves 1 bunch", unitPrice: 14, unit: "1 bunch" }
-  ]
-};
+import { keralaProductCatalog } from "./kerala-products.mjs";
+
+const productCatalog = keralaProductCatalog;
 
 const basketPatterns = [
   {
     name: "bread-jam-breakfast",
+    weight: 10,
+    groups: ["beverages", "flours", "dairy"],
+    forcedItems: ["Milma Toned Milk 500ml", "Amul Butter 100g"]
+  },
+  {
+    name: "tea-biscuit-run",
     weight: 12,
-    groups: ["breakfast"],
-    forcedItems: ["Modern Bread 400g", "Kissan Mixed Fruit Jam 500g"]
+    groups: ["beverages", "snacksBiscuits"],
+    forcedItems: ["Kanan Devan Tea 250g", "Sugar 1kg", "Britannia Marie Gold 250g"]
   },
   {
-    name: "tea-biscuit",
-    weight: 14,
-    groups: ["teaTime"],
-    forcedItems: ["Kanan Devan Tea 500g", "Sugar 1kg"]
+    name: "monthly-staples-major",
+    weight: 25,
+    groups: ["staples", "flours", "masalaSpices", "oilsGhee", "household"]
   },
   {
-    name: "monthly-staples",
-    weight: 19,
-    groups: ["staples", "masalaOil", "produce"]
-  },
-  {
-    name: "snack-run",
-    weight: 11,
-    groups: ["snacks", "teaTime"]
-  },
-  {
-    name: "curry-combo",
+    name: "curry-preparation",
     weight: 15,
-    groups: ["masalaOil", "produce", "staples"],
-    forcedItems: ["Eastern Meat Masala 100g", "Onion 1kg", "Tomato 1kg"]
+    groups: ["masalaSpices", "produce", "oilsGhee", "staples"],
+    forcedItems: ["Eastern Chicken Masala 100g", "Onion 1kg", "Tomato 1kg", "Ginger 250g"]
   },
   {
-    name: "family-basket",
-    weight: 17,
-    groups: ["staples", "breakfast", "teaTime", "produce", "masalaOil"]
+    name: "evening-snacks",
+    weight: 10,
+    groups: ["snacksBiscuits", "beverages"],
+    forcedItems: ["Banana Chips 200g", "Kerala Mixture 250g"]
   },
   {
-    name: "personal-care-topup",
-    weight: 12,
-    groups: ["personalCare", "staples"]
+    name: "dairy-produce-topup",
+    weight: 15,
+    groups: ["dairy", "produce"],
+    forcedItems: ["Milma Toned Milk 500ml", "Tomato 1kg"]
+  },
+  {
+    name: "personal-cleaning-haul",
+    weight: 13,
+    groups: ["personalCare", "household"]
   }
 ];
+
 
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;

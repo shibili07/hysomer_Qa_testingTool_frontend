@@ -1,5 +1,3 @@
-import { addDoc, collection } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import {
   CustomerInput,
   InvoiceInput,
@@ -128,11 +126,19 @@ export async function createInvoice(input: CreateInvoiceInput) {
     invoiceUrl: extData.invoiceUrl || basePayload.invoiceUrl || null
   };
 
-  await addDoc(collection(db, "invoices"), {
-    ...finalPayload,
-    createdAt: Date.now(),
-    updatedAt: Date.now()
+  // Save to local backend instead of Firebase
+  const localRes = await fetch("http://localhost:5000/api/invoices/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(finalPayload),
+    credentials: "include"
   });
+
+  if (!localRes.ok) {
+    console.error("Failed to save invoice to local server, but external sync succeeded.");
+  }
 
   return finalPayload;
 }
