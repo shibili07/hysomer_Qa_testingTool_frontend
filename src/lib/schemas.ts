@@ -54,6 +54,7 @@ export const InvoiceSchema = z.object({
   cashierName: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   externalTerminalId: z.string().optional().nullable(),
+  organizationId: z.string().optional().nullable(),
   customer: InlineCustomerSchema,
   items: z.array(InvoiceItemSchema).max(50, "Maximum 50 items per invoice").optional().default([])
 });

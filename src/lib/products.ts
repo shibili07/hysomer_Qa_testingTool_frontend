@@ -1,35 +1,34 @@
-import { toast } from "sonner";
-
-const API_BASE_URL = "http://localhost:5000/api/products";
+import { apiFetch } from "./api-client";
 
 export async function listProducts() {
   try {
-    const res = await fetch(`${API_BASE_URL}/`, {
-      credentials: "include",
-    });
-    
+    const res = await apiFetch("/api/products/");
+
     const data = await res.json();
-    
+
     if (!res.ok) {
       throw new Error(data.message || "Failed to fetch products");
     }
-    
-    return data.products || [];
-  } catch (error: any) {
+
+    const raw = data.products || [];
+    return raw.map((p: Record<string, unknown> & { _id?: string; id?: string }) => ({
+      ...p,
+      id: String(p.id ?? p._id ?? ""),
+    })).filter((p: { id: string }) => p.id.length > 0);
+  } catch (error: unknown) {
     console.error("List products error:", error);
     return [];
   }
 }
 
-export async function createProduct(productData: any) {
+export async function createProduct(productData: unknown) {
   try {
-    const res = await fetch(`${API_BASE_URL}/`, {
+    const res = await apiFetch("/api/products/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(productData),
-      credentials: "include",
     });
 
     const data = await res.json();
@@ -39,20 +38,19 @@ export async function createProduct(productData: any) {
     }
 
     return data.product;
-  } catch (error: any) {
+  } catch (error: unknown) {
     throw error;
   }
 }
 
-export async function editProduct(id: string, productData: any) {
+export async function editProduct(id: string, productData: unknown) {
   try {
-    const res = await fetch(`${API_BASE_URL}/${id}`, {
+    const res = await apiFetch(`/api/products/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(productData),
-      credentials: "include",
     });
 
     const data = await res.json();
@@ -62,16 +60,15 @@ export async function editProduct(id: string, productData: any) {
     }
 
     return data.product;
-  } catch (error: any) {
+  } catch (error: unknown) {
     throw error;
   }
 }
 
 export async function removeProduct(id: string) {
   try {
-    const res = await fetch(`${API_BASE_URL}/${id}`, {
+    const res = await apiFetch(`/api/products/${id}`, {
       method: "DELETE",
-      credentials: "include",
     });
 
     const data = await res.json();
@@ -81,7 +78,7 @@ export async function removeProduct(id: string) {
     }
 
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     throw error;
   }
 }

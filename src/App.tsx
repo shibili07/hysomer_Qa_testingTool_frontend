@@ -10,6 +10,7 @@ import LoginPage from "@/pages/LoginPage";
 import SupermarketsPage from "@/pages/SupermarketsPage";
 import RunningPage from "@/pages/RunningPage";
 import RunningDetailPage from "@/pages/RunningDetailPage";
+import InjectionHistoryPage from "@/pages/InjectionHistoryPage";
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
               <Route path="/customers" element={<CustomerPage />} />
               <Route path="/supermarkets" element={<SupermarketsPage />} />
               <Route path="/running" element={<RunningPage />} />
+              <Route path="/running/history" element={<InjectionHistoryPage />} />
               <Route path="/running/:id" element={<RunningDetailPage />} />
               <Route path="/" element={<Navigate to="/products" replace />} />
               <Route path="*" element={<Navigate to="/products" replace />} />

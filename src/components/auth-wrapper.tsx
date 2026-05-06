@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/context/auth-context";
+import { apiFetch } from "@/lib/api-client";
 
 export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -17,9 +18,7 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const res = await fetch("http://localhost:5000/api/auth/me", {
-          credentials: "include"
-        });
+        const res = await apiFetch("/api/auth/me");
 
         if (res.status === 401) {
           setUser(null);

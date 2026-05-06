@@ -1,6 +1,4 @@
-import { toast } from "sonner";
-
-const API_BASE_URL = "http://localhost:5000/api/supermarkets";
+import { apiFetch } from "./api-client";
 
 export interface Supermarket {
   id: string;
@@ -13,18 +11,20 @@ export interface Supermarket {
 
 export async function listSupermarkets() {
   try {
-    const res = await fetch(`${API_BASE_URL}`, {
-      credentials: "include",
-    });
-    
+    const res = await apiFetch("/api/supermarkets");
+
     const data = await res.json();
-    
+
     if (!res.ok) {
       throw new Error(data.message || "Failed to fetch supermarkets");
     }
-    
-    return data.supermarkets || [];
-  } catch (error: any) {
+
+    const raw = data.supermarkets || [];
+    return raw.map((s: Supermarket & { _id?: string }) => ({
+      ...s,
+      id: String(s.id ?? s._id ?? ""),
+    })).filter((s: Supermarket) => s.id.length > 0);
+  } catch (error: unknown) {
     console.error("List supermarkets error:", error);
     return [];
   }
@@ -32,13 +32,12 @@ export async function listSupermarkets() {
 
 export async function createSupermarket(supermarketData: Partial<Supermarket>) {
   try {
-    const res = await fetch(`${API_BASE_URL}`, {
+    const res = await apiFetch("/api/supermarkets", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(supermarketData),
-      credentials: "include",
     });
 
     const data = await res.json();
@@ -48,20 +47,19 @@ export async function createSupermarket(supermarketData: Partial<Supermarket>) {
     }
 
     return data.supermarket;
-  } catch (error: any) {
+  } catch (error: unknown) {
     throw error;
   }
 }
 
 export async function editSupermarket(id: string, supermarketData: Partial<Supermarket>) {
   try {
-    const res = await fetch(`${API_BASE_URL}/${id}`, {
+    const res = await apiFetch(`/api/supermarkets/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(supermarketData),
-      credentials: "include",
     });
 
     const data = await res.json();
@@ -71,16 +69,15 @@ export async function editSupermarket(id: string, supermarketData: Partial<Super
     }
 
     return data.supermarket;
-  } catch (error: any) {
+  } catch (error: unknown) {
     throw error;
   }
 }
 
 export async function removeSupermarket(id: string) {
   try {
-    const res = await fetch(`${API_BASE_URL}/${id}`, {
+    const res = await apiFetch(`/api/supermarkets/${id}`, {
       method: "DELETE",
-      credentials: "include",
     });
 
     const data = await res.json();
@@ -90,7 +87,7 @@ export async function removeSupermarket(id: string) {
     }
 
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     throw error;
   }
 }

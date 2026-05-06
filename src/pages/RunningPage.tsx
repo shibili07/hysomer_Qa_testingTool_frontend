@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   Activity,
+  CalendarRange,
   Cable,
   ChevronRight,
   CircleDot,
@@ -24,9 +25,12 @@ import {
   getConnection,
   subscribe,
   getAllConnections,
+  startOverviewPolling,
   ConnectionStatus,
 } from "@/lib/running-store";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 // ─── Hook to sync with running-store ──────────────────────────────────────
 
@@ -102,9 +106,13 @@ function ActionMenu({
       icon: Power,
       show: status === "disconnected",
       color: "text-emerald-600 hover:bg-emerald-50",
-      onClick: () => {
-        connect(sm);
-        toast.success(`Connected to ${sm.supermarket_name}`);
+      onClick: async () => {
+        try {
+          await connect(sm);
+          toast.success(`Connected to ${sm.supermarket_name}`);
+        } catch {
+          toast.error("Could not start injection (check API / login)");
+        }
       },
     },
     {
@@ -112,9 +120,13 @@ function ActionMenu({
       icon: PowerOff,
       show: status === "connected" || status === "stopped",
       color: "text-rose-600 hover:bg-rose-50",
-      onClick: () => {
-        disconnect(sm);
-        toast.info(`Disconnected from ${sm.supermarket_name}`);
+      onClick: async () => {
+        try {
+          await disconnect(sm);
+          toast.info(`Disconnected from ${sm.supermarket_name}`);
+        } catch {
+          toast.error("Could not disconnect");
+        }
       },
     },
     {
@@ -122,9 +134,13 @@ function ActionMenu({
       icon: Pause,
       show: status === "connected",
       color: "text-amber-600 hover:bg-amber-50",
-      onClick: () => {
-        stop(sm);
-        toast.info(`Paused injection for ${sm.supermarket_name}`);
+      onClick: async () => {
+        try {
+          await stop(sm);
+          toast.info(`Paused injection for ${sm.supermarket_name}`);
+        } catch {
+          toast.error("Could not pause");
+        }
       },
     },
     {
@@ -132,9 +148,13 @@ function ActionMenu({
       icon: Play,
       show: status === "stopped",
       color: "text-emerald-600 hover:bg-emerald-50",
-      onClick: () => {
-        resume(sm);
-        toast.success(`Resumed injection for ${sm.supermarket_name}`);
+      onClick: async () => {
+        try {
+          await resume(sm);
+          toast.success(`Resumed injection for ${sm.supermarket_name}`);
+        } catch {
+          toast.error("Could not resume");
+        }
       },
     },
     {
@@ -142,9 +162,13 @@ function ActionMenu({
       icon: Trash2,
       show: true,
       color: "text-rose-600 hover:bg-rose-50",
-      onClick: () => {
-        deleteConnection(sm);
-        toast.info(`Cleared data for ${sm.supermarket_name}`);
+      onClick: async () => {
+        try {
+          await deleteConnection(sm);
+          toast.info(`Cleared data for ${sm.supermarket_name}`);
+        } catch {
+          toast.error("Could not clear data");
+        }
       },
     },
   ];
@@ -194,7 +218,9 @@ function SupermarketCard({ sm }: { sm: Supermarket }) {
   const conn = getConnection(sm);
 
   const handleCardClick = () => {
-    navigate(`/running/${sm.id || sm._id}`);
+    navigate(`/running/${sm.id || sm._id}`, {
+      state: { supermarketName: sm.supermarket_name },
+    });
   };
 
   return (
@@ -276,6 +302,11 @@ export default function RunningPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    const stop = startOverviewPolling(3000);
+    return stop;
+  }, []);
+
   // Calculate aggregated stats
   const allConns = getAllConnections();
   const totalConnected = Array.from(allConns.values()).filter((c) => c.status === "connected").length;
@@ -295,13 +326,28 @@ export default function RunningPage() {
             Running
           </h1>
           <p className="mt-2 text-base font-medium text-zinc-500">
-            Running – Durability testing through real-time invoice injection. 1 invoice per minute per connected supermarket.
+            Durability testing: the backend injects about one invoice per minute per <strong className="font-semibold text-zinc-700">connected</strong> supermarket. Close the browser anytime — injection continues while the API server stays running. Use Connect / Pause / Disconnect to control jobs from here.
           </p>
         </div>
-        <Badge variant="secondary" className="w-fit rounded-xl px-4 py-2 font-semibold">
-          <Zap className="mr-1.5 h-3.5 w-3.5 text-amber-500" />
-          Ingestion Stress Test
-        </Badge>
+        <div className="flex shrink-0 flex-col items-stretch gap-3 sm:items-end">
+          <Badge
+            variant="secondary"
+            className="inline-flex w-fit max-w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold"
+          >
+            <Zap className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+            Ingestion Stress Test
+          </Badge>
+          <Link
+            to="/running/history"
+            className={cn(
+              buttonVariants({ variant: "default" }),
+              "inline-flex h-auto min-h-11 w-fit max-w-full shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold shadow-lg shadow-zinc-900/15"
+            )}
+          >
+            <CalendarRange className="h-4 w-4 shrink-0" />
+            Injection history
+          </Link>
+        </div>
       </div>
 
       {/* Global stats */}

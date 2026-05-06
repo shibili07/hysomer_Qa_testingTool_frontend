@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiFetch } from "@/lib/api-client";
 
 interface User {
   id: string;
@@ -23,9 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/auth/me", {
-        credentials: "include"
-      });
+      const res = await apiFetch("/api/auth/me");
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
@@ -43,9 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch("http://localhost:5000/api/auth/logout", {
+      await apiFetch("/api/auth/logout", {
         method: "POST",
-        credentials: "include"
       });
       setUser(null);
       navigate("/login");

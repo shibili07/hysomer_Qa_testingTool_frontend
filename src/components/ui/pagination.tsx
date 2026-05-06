@@ -9,7 +9,9 @@ interface PaginationProps {
   totalItems: number;
   pageSize: number;
   onPageChange: (page: number) => void;
-  onPageSizeChange: (size: number) => void;
+  onPageSizeChange?: (size: number) => void;
+  /** Hide rows-per-page control (fixed page size) */
+  hidePageSize?: boolean;
 }
 
 export function Pagination({
@@ -19,25 +21,32 @@ export function Pagination({
   pageSize,
   onPageChange,
   onPageSizeChange,
+  hidePageSize = false,
 }: PaginationProps) {
   return (
     <div className="flex flex-col items-center justify-between gap-4 px-2 py-4 sm:flex-row">
-      <div className="flex items-center gap-2 text-sm text-zinc-500 font-medium">
-        <span>Rows per page:</span>
-        <select
-          value={pageSize}
-          onChange={(e) => onPageSizeChange(Number(e.target.value))}
-          className="h-8 rounded-md border border-zinc-200 bg-white px-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-zinc-950/10"
-        >
-          {[10, 20, 50, 100].map((size) => (
-            <option key={size} value={size}>
-              {size}
-            </option>
-          ))}
-        </select>
-        <span className="ml-4">
-          Showing <span className="font-bold text-zinc-950">{(page - 1) * pageSize + 1}</span> to{" "}
-          <span className="font-bold text-zinc-950">{Math.min(page * pageSize, totalItems)}</span> of{" "}
+      <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-500 font-medium">
+        {hidePageSize ? (
+          <span className="text-xs font-semibold text-zinc-400">{pageSize} per page</span>
+        ) : (
+          <>
+            <span>Rows per page:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
+              className="h-8 rounded-md border border-zinc-200 bg-white px-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-zinc-950/10"
+            >
+              {[10, 20, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+        <span className={hidePageSize ? "" : "sm:ml-4"}>
+          Showing <span className="font-bold text-zinc-950">{totalItems === 0 ? 0 : (page - 1) * pageSize + 1}</span>{" "}
+          to <span className="font-bold text-zinc-950">{Math.min(page * pageSize, totalItems)}</span> of{" "}
           <span className="font-bold text-zinc-950">{totalItems}</span>
         </span>
       </div>

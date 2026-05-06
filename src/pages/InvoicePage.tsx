@@ -3,9 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { syncCustomerExternal } from "@/lib/customers";
 import { createInvoice } from "@/lib/invoices";
 import { listProducts } from "@/lib/products";
+import { listSupermarkets, type Supermarket } from "@/lib/supermarkets";
 import { CustomerSchema } from "@/lib/schemas";
 import { toast } from "sonner";
-import { CreditCard, Plus, Receipt, ShoppingCart, Trash2, UserRound } from "lucide-react";
+import { Building2, CreditCard, Plus, Receipt, ShoppingCart, Trash2, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +33,17 @@ type CartItem = {
 
 const format = (n: number) => n.toFixed(2);
 
+function supermarketKey(s: Supermarket): string {
+  return String(s.id || s._id || "");
+}
+
+function productRowId(p: ProductRecord): string {
+  return String(p.id ?? p._id ?? "").trim();
+}
+
 export default function InvoicePage() {
+  const [supermarkets, setSupermarkets] = useState<Supermarket[]>([]);
+  const [selectedSupermarketId, setSelectedSupermarketId] = useState("");
   const [products, setProducts] = useState<ProductRecord[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string>("");
@@ -45,14 +56,26 @@ export default function InvoicePage() {
   >("CASH");
   const [cashierName, setCashierName] = useState("hysomer");
   const [notes, setNotes] = useState("");
-  const [ingestionKey, setIngestionKey] = useState("");
+  /** Used when no supermarket is registered, or to override the selected supermarket's key. */
+  const [manualOrganizationId, setManualOrganizationId] = useState("");
+  const [manualApiKey, setManualApiKey] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const selectedSupermarket = useMemo(
+    () => supermarkets.find((s) => supermarketKey(s) === selectedSupermarketId),
+    [supermarkets, selectedSupermarketId]
+  );
+
+  const effectiveOrganizationId =
+    selectedSupermarket?.organization_id?.trim() || manualOrganizationId.trim();
+  const effectiveApiKey = selectedSupermarket?.api_key?.trim() || manualApiKey.trim();
+
   const refreshBaseData = async () => {
-    const productData = await listProducts();
+    const [productData, smData] = await Promise.all([listProducts(), listSupermarkets()]);
     setProducts(productData);
-    if (productData.length && !selectedProductId) {
-      setSelectedProductId(productData[0].id);
+    setSupermarkets(smData);
+    if (smData.length === 1) {
+      setSelectedSupermarketId(supermarketKey(smData[0]));
     }
   };
 
@@ -66,10 +89,23 @@ export default function InvoicePage() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!products.length) {
+      setSelectedProductId("");
+      return;
+    }
+    setSelectedProductId((prev) => {
+      if (prev && products.some((p) => productRowId(p) === prev)) {
+        return prev;
+      }
+      return productRowId(products[0]);
+    });
+  }, [products]);
+
   const itemRows = useMemo(() => {
     return cart
       .map((item) => {
-        const p = products.find((x) => x.id === item.productId);
+        const p = products.find((x) => productRowId(x) === item.productId);
         if (!p) return null;
 
         const lineSubtotal = p.price * item.quantity;
@@ -110,13 +146,17 @@ export default function InvoicePage() {
   }, [itemRows]);
 
   const addProductToBill = () => {
-    if (!selectedProductId) return;
+    const id = selectedProductId.trim();
+    if (!id || !products.some((p) => productRowId(p) === id)) {
+      toast.error("Select a product to add.");
+      return;
+    }
     setCart((prev) => {
-      const existing = prev.find((x) => x.productId === selectedProductId);
+      const existing = prev.find((x) => x.productId === id);
       if (existing) {
-        return prev.map((x) => (x.productId === selectedProductId ? { ...x, quantity: x.quantity + 1 } : x));
+        return prev.map((x) => (x.productId === id ? { ...x, quantity: x.quantity + 1 } : x));
       }
-      return [...prev, { productId: selectedProductId, quantity: 1 }];
+      return [...prev, { productId: id, quantity: 1 }];
     });
   };
 
@@ -132,6 +172,15 @@ export default function InvoicePage() {
   const saveInvoice = async () => {
     if (!itemRows.length) {
       toast.error("Add at least one product to invoice.");
+      return;
+    }
+
+    if (!effectiveOrganizationId || !effectiveApiKey) {
+      toast.error(
+        supermarkets.length
+          ? "Select a supermarket and ensure it has an organization ID and API key, or enter them manually below."
+          : "Enter organization ID and API key (or add a supermarket under Running)."
+      );
       return;
     }
 
@@ -152,14 +201,15 @@ export default function InvoicePage() {
 
       // External sync via injection server logic
       const syncResult = await syncCustomerExternal(customerParsed.data, {
-        ingestionKey,
+        ingestionKey: effectiveApiKey,
+        organizationId: effectiveOrganizationId,
         paymentMethod: paymentMethod || null,
         items: itemRows.map((row) => ({
           productName: row.product.productName,
           quantity: row.quantity,
           unitPrice: row.product.price,
           totalPrice: row.lineTotal,
-          externalProductId: row.product.productId,
+          externalProductId: row.product.productId ?? row.product.id,
           taxAmount: row.lineTax,
           discountAmount: row.lineDiscount
         })),
@@ -185,7 +235,8 @@ export default function InvoicePage() {
         paymentMethod: paymentMethod || null,
         cashierName: cashierName || null,
         notes: notes || null,
-        ingestionKey: ingestionKey.trim() || null
+        ingestionKey: effectiveApiKey,
+        organizationId: effectiveOrganizationId
       });
 
       setCart([]);
@@ -230,6 +281,73 @@ export default function InvoicePage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-zinc-500" />
+                Supermarket / organization
+              </CardTitle>
+              <CardDescription>
+                Same as <span className="font-medium text-zinc-700">Running</span>: pick where invoices are ingested, then add line items below.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col gap-3">
+                <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                  Registered supermarket
+                </label>
+                <select
+                  className="h-11 rounded-xl border border-zinc-200 bg-white px-3.5 text-sm font-medium text-zinc-950 shadow-sm focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-zinc-200/70 md:max-w-xl"
+                  value={selectedSupermarketId}
+                  onChange={(e) => setSelectedSupermarketId(e.target.value)}
+                  disabled={!supermarkets.length}
+                >
+                  <option value="">
+                    {supermarkets.length ? "Choose supermarket…" : "No supermarkets — use manual keys below"}
+                  </option>
+                  {supermarkets.map((sm) => {
+                    const id = supermarketKey(sm);
+                    return (
+                      <option key={id} value={id}>
+                        {sm.supermarket_name}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              {selectedSupermarket ? (
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700">
+                  <p className="font-medium text-zinc-900">{selectedSupermarket.supermarket_name}</p>
+                  <p className="mt-1 font-mono text-xs text-zinc-600 break-all">
+                    Organization ID: {selectedSupermarket.organization_id}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">API key from this record is sent as X-Ingestion-Key (same as Running).</p>
+                </div>
+              ) : null}
+              <div className="space-y-3 border-t border-zinc-100 pt-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                  Manual ingestion (optional override)
+                </p>
+                <Input
+                  placeholder="Organization ID (required if no supermarket selected)"
+                  value={manualOrganizationId}
+                  onChange={(e) => setManualOrganizationId(e.target.value)}
+                  className="font-mono text-sm"
+                />
+                <Input
+                  placeholder="API key / ingestion key"
+                  value={manualApiKey}
+                  onChange={(e) => setManualApiKey(e.target.value)}
+                />
+                {selectedSupermarket ? (
+                  <p className="text-xs text-zinc-500">
+                    If this supermarket is missing an API key or organization ID in the database, the manual fields below are used as a fallback.
+                  </p>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
                 <UserRound className="h-5 w-5 text-zinc-500" />
                 Customer
               </CardTitle>
@@ -262,13 +380,20 @@ export default function InvoicePage() {
               onChange={(e) => setSelectedProductId(e.target.value)}
             >
               {!products.length && <option value="">No products available</option>}
-              {products.map((product) => (
-                <option key={product.id} value={product.id}>
+              {products.map((product) => {
+                const pid = productRowId(product);
+                return (
+                <option key={pid} value={pid}>
                   {product.productName} - {product.price}
                 </option>
-              ))}
+                );
+              })}
             </select>
-            <Button onClick={addProductToBill} disabled={loading} type="button">
+            <Button
+              onClick={addProductToBill}
+              disabled={loading || !selectedProductId.trim()}
+              type="button"
+            >
               <Plus className="h-4 w-4" />
               Add To Bill
             </Button>
@@ -288,8 +413,10 @@ export default function InvoicePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {itemRows.map((row) => (
-                  <TableRow key={row.product.id}>
+                {itemRows.map((row) => {
+                  const rowId = productRowId(row.product);
+                  return (
+                  <TableRow key={rowId}>
                     <TableCell className="font-medium">{row.product.productName}</TableCell>
                     <TableCell>
                       <Input
@@ -297,7 +424,7 @@ export default function InvoicePage() {
                         type="number"
                         min={1}
                         value={row.quantity}
-                        onChange={(e) => updateQty(row.product.id, Number(e.target.value))}
+                        onChange={(e) => updateQty(rowId, Number(e.target.value))}
                       />
                     </TableCell>
                     <TableCell>{format(row.product.price)}</TableCell>
@@ -307,13 +434,14 @@ export default function InvoicePage() {
                       <Badge>{format(row.lineTotal)}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Button className="h-9 px-3" variant="destructive" onClick={() => removeFromBill(row.product.id)}>
+                      <Button className="h-9 px-3" variant="destructive" onClick={() => removeFromBill(rowId)}>
                         <Trash2 className="h-3.5 w-3.5" />
                         Remove
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
                 {!itemRows.length && (
                   <TableRow>
                     <TableCell className="text-center text-slate-500" colSpan={7}>
@@ -380,11 +508,6 @@ export default function InvoicePage() {
               <option value="OTHER">OTHER</option>
             </select>
             <Input placeholder="Cashier Name" value={cashierName} onChange={(e) => setCashierName(e.target.value)} />
-            <Input
-              placeholder="API Key"
-              value={ingestionKey}
-              onChange={(e) => setIngestionKey(e.target.value)}
-            />
             <Textarea placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
             <Button className="mt-1 h-12 rounded-2xl" onClick={saveInvoice} disabled={loading}>
               <Receipt className="h-4 w-4" />

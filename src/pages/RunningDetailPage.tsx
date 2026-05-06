@@ -29,10 +29,16 @@ import {
   clearLogs,
   getConnection,
   subscribe,
+  startOverviewPolling,
+  fetchJobLogsPage,
+  JOB_LOG_PAGE_SIZE,
   InvoiceLogEntry,
+  type InjectionLogFilter,
 } from "@/lib/running-store";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/ui/pagination";
 
 // ─── Hook to subscribe to store changes ───────────────────────────────────────
 
@@ -141,7 +147,11 @@ function LogEntryRow({
           }
           className="shrink-0 text-[10px] px-2 py-0.5"
         >
-          {entry.status === "pending" ? "Sending..." : entry.status}
+          {entry.status === "pending"
+            ? "Sending..."
+            : entry.status === "failed" && entry.httpStatus != null
+              ? `failed · HTTP ${entry.httpStatus}`
+              : entry.status}
         </Badge>
 
         {/* Expand toggle */}
@@ -153,10 +163,17 @@ function LogEntryRow({
       {/* Expanded detail */}
       {expanded && (
         <div className="border-t border-zinc-100 bg-zinc-50/40 px-6 py-4 space-y-4 animate-in slide-in-from-top-1 fade-in-0 duration-200">
-          {entry.error && (
+          {(entry.error || entry.httpStatus != null) && (
             <div className="rounded-lg bg-rose-50 border border-rose-200 p-3">
               <p className="text-xs font-bold text-rose-700">Error Response</p>
-              <p className="mt-1 text-xs font-mono text-rose-600 break-all">{entry.error}</p>
+              {entry.httpStatus != null && (
+                <p className="mt-1 text-[11px] font-semibold text-rose-800">
+                  HTTP {entry.httpStatus}
+                </p>
+              )}
+              {entry.error && (
+                <p className="mt-1 text-xs font-mono text-rose-600 break-all">{entry.error}</p>
+              )}
             </div>
           )}
 
@@ -283,7 +300,45 @@ export default function RunningDetailPage() {
   const navigate = useNavigate();
   const [supermarket, setSupermarket] = useState<Supermarket | null>(null);
   const [loading, setLoading] = useState(true);
+  const [logs, setLogs] = useState<InvoiceLogEntry[]>([]);
+  const [logFilter, setLogFilter] = useState<InjectionLogFilter>("all");
+  const [logPage, setLogPage] = useState(1);
+  const [logsTotal, setLogsTotal] = useState(0);
+  const [logTotalPages, setLogTotalPages] = useState(0);
   useRunningState();
+
+  useEffect(() => {
+    const stop = startOverviewPolling(3000);
+    return stop;
+  }, []);
+
+  useEffect(() => {
+    setLogPage(1);
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    const loadLogs = async () => {
+      const data = await fetchJobLogsPage(id, logPage, logFilter, JOB_LOG_PAGE_SIZE);
+      if (cancelled || !data) return;
+      const tp = data.totalPages;
+      const clamped = tp === 0 ? 1 : Math.min(logPage, tp);
+      if (clamped !== logPage) {
+        setLogPage(clamped);
+        return;
+      }
+      setLogs(data.logs);
+      setLogsTotal(data.total);
+      setLogTotalPages(tp);
+    };
+    void loadLogs();
+    const iv = setInterval(() => void loadLogs(), 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+    };
+  }, [id, logFilter, logPage]);
 
   useEffect(() => {
     listSupermarkets()
@@ -318,9 +373,10 @@ export default function RunningDetailPage() {
   const conn = getConnection(supermarket);
   const isConnected = conn.status === "connected";
   const isStopped = conn.status === "stopped";
-  const successCount = conn.logs.filter((l) => l.status === "success").length;
-  const failedCount = conn.logs.filter((l) => l.status === "failed").length;
-  const pendingCount = conn.logs.filter((l) => l.status === "pending").length;
+  const jobSuccessTotal = conn.invoicesSent;
+  const jobFailedTotal = conn.invoicesFailed;
+  const listedCount = logsTotal;
+  const pendingCount = logs.filter((l) => l.status === "pending").length;
 
   return (
     <section className="mx-auto max-w-[1000px] space-y-6">
@@ -374,9 +430,13 @@ export default function RunningDetailPage() {
               <Button
                 size="sm"
                 className="rounded-xl bg-emerald-600 hover:bg-emerald-500 shadow-none"
-                onClick={() => {
-                  connect(supermarket);
-                  toast.success("Connected!");
+                onClick={async () => {
+                  try {
+                    await connect(supermarket);
+                    toast.success("Connected!");
+                  } catch {
+                    toast.error("Could not connect — check server and login.");
+                  }
                 }}
               >
                 <Power className="h-3.5 w-3.5" />
@@ -389,9 +449,13 @@ export default function RunningDetailPage() {
                   size="sm"
                   variant="secondary"
                   className="rounded-xl"
-                  onClick={() => {
-                    stop(supermarket);
-                    toast.info("Paused");
+                  onClick={async () => {
+                    try {
+                      await stop(supermarket);
+                      toast.info("Paused");
+                    } catch {
+                      toast.error("Could not pause");
+                    }
                   }}
                 >
                   <Pause className="h-3.5 w-3.5" />
@@ -401,9 +465,13 @@ export default function RunningDetailPage() {
                   size="sm"
                   variant="secondary"
                   className="rounded-xl text-rose-600 border-rose-200 hover:bg-rose-50"
-                  onClick={() => {
-                    disconnect(supermarket);
-                    toast.info("Disconnected");
+                  onClick={async () => {
+                    try {
+                      await disconnect(supermarket);
+                      toast.info("Disconnected");
+                    } catch {
+                      toast.error("Could not disconnect");
+                    }
                   }}
                 >
                   <PowerOff className="h-3.5 w-3.5" />
@@ -416,9 +484,13 @@ export default function RunningDetailPage() {
                 <Button
                   size="sm"
                   className="rounded-xl bg-emerald-600 hover:bg-emerald-500 shadow-none"
-                  onClick={() => {
-                    resume(supermarket);
-                    toast.success("Resumed!");
+                  onClick={async () => {
+                    try {
+                      await resume(supermarket);
+                      toast.success("Resumed!");
+                    } catch {
+                      toast.error("Could not resume");
+                    }
                   }}
                 >
                   <Play className="h-3.5 w-3.5" />
@@ -428,9 +500,13 @@ export default function RunningDetailPage() {
                   size="sm"
                   variant="secondary"
                   className="rounded-xl text-rose-600 border-rose-200 hover:bg-rose-50"
-                  onClick={() => {
-                    disconnect(supermarket);
-                    toast.info("Disconnected");
+                  onClick={async () => {
+                    try {
+                      await disconnect(supermarket);
+                      toast.info("Disconnected");
+                    } catch {
+                      toast.error("Could not disconnect");
+                    }
                   }}
                 >
                   <PowerOff className="h-3.5 w-3.5" />
@@ -438,14 +514,22 @@ export default function RunningDetailPage() {
                 </Button>
               </>
             )}
-            {conn.logs.length > 0 && (
+            {logsTotal > 0 && (
               <Button
                 size="sm"
                 variant="ghost"
                 className="rounded-xl text-zinc-500"
-                onClick={() => {
-                  clearLogs(supermarket);
-                  toast.info("Logs cleared");
+                onClick={async () => {
+                  try {
+                    await clearLogs(supermarket);
+                    setLogs([]);
+                    setLogsTotal(0);
+                    setLogTotalPages(0);
+                    setLogPage(1);
+                    toast.info("Logs cleared (history removed; totals unchanged)");
+                  } catch {
+                    toast.error("Could not clear logs");
+                  }
                 }}
               >
                 Clear Logs
@@ -454,19 +538,24 @@ export default function RunningDetailPage() {
           </div>
         </div>
 
-        {/* Stats strip */}
-        <div className="mt-5 grid grid-cols-4 gap-3">
+        {/* Stats strip — job totals from DB; list may be filtered */}
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-xl bg-zinc-50 p-3 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Total Logs</p>
-            <p className="mt-1 text-lg font-bold tabular-nums text-zinc-950">{conn.logs.length}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Logs (filter)</p>
+            <p className="mt-1 text-lg font-bold tabular-nums text-zinc-950">{listedCount}</p>
+            <p className="mt-0.5 text-[9px] font-medium text-zinc-400">
+              filtered total · {JOB_LOG_PAGE_SIZE}/page
+            </p>
           </div>
           <div className="rounded-xl bg-emerald-50 p-3 text-center">
             <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-500">Success</p>
-            <p className="mt-1 text-lg font-bold tabular-nums text-emerald-700">{successCount}</p>
+            <p className="mt-1 text-lg font-bold tabular-nums text-emerald-700">{jobSuccessTotal}</p>
+            <p className="mt-0.5 text-[9px] font-medium text-emerald-600/80">stored in job</p>
           </div>
           <div className="rounded-xl bg-rose-50 p-3 text-center">
             <p className="text-[10px] font-bold uppercase tracking-wider text-rose-500">Failed</p>
-            <p className="mt-1 text-lg font-bold tabular-nums text-rose-700">{failedCount}</p>
+            <p className="mt-1 text-lg font-bold tabular-nums text-rose-700">{jobFailedTotal}</p>
+            <p className="mt-0.5 text-[9px] font-medium text-rose-600/80">stored in job</p>
           </div>
           <div className="rounded-xl bg-amber-50 p-3 text-center">
             <p className="text-[10px] font-bold uppercase tracking-wider text-amber-500">Pending</p>
@@ -477,8 +566,8 @@ export default function RunningDetailPage() {
 
       {/* Log stream (Sentry-style) */}
       <div className="rounded-2xl border border-zinc-200/80 bg-white shadow-[0_8px_30px_rgba(24,24,27,0.04)] overflow-hidden">
-        <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/50 px-5 py-3.5">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 border-b border-zinc-100 bg-zinc-50/50 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             <CircleDot className="h-4 w-4 text-zinc-500" />
             <h2 className="text-sm font-bold text-zinc-950">Invoice Stream</h2>
             {isConnected && (
@@ -487,28 +576,90 @@ export default function RunningDetailPage() {
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
             )}
+            <div
+              className="flex w-full flex-col gap-2 sm:ml-2 sm:w-auto sm:flex-row sm:items-center"
+              role="tablist"
+              aria-label="Filter logs by outcome"
+            >
+              <div className="flex rounded-xl border border-zinc-200/90 bg-zinc-200/40 p-1 shadow-[inset_0_1px_2px_rgba(24,24,27,0.08)] sm:inline-flex">
+                {(
+                  [
+                    { key: "all" as const, label: "All" },
+                    { key: "success" as const, label: "Success" },
+                    { key: "failed" as const, label: "Failed" },
+                  ] as const
+                ).map(({ key, label }) => {
+                  const active = logFilter === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => {
+                        setLogFilter(key);
+                        setLogPage(1);
+                      }}
+                      className={cn(
+                        "relative flex-1 rounded-lg px-4 py-2 text-center text-xs font-bold tracking-tight transition-all min-w-[4.5rem] sm:flex-none",
+                        active
+                          ? "bg-white text-zinc-950 shadow-sm ring-1 ring-zinc-200/90"
+                          : "text-zinc-500 hover:text-zinc-800"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
           <p className="text-[11px] font-medium text-zinc-400">
-            {conn.logs.length} events
+            Page {logPage}
+            {logTotalPages > 0 ? ` / ${logTotalPages}` : ""} · {logs.length} on this page · {logsTotal} total
           </p>
         </div>
 
-        {conn.logs.length === 0 ? (
+        {logs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <Zap className="h-8 w-8 text-zinc-200" />
             <p className="mt-3 text-sm font-semibold text-zinc-400">
-              No invoices injected yet
+              {logsTotal === 0
+                ? logFilter === "all"
+                  ? "No invoices injected yet"
+                  : logFilter === "success"
+                    ? "No successful injections in this list"
+                    : "No failed injections in this list"
+                : "No rows on this page"}
             </p>
             <p className="mt-1 text-xs text-zinc-400">
-              Connect to this supermarket to start injecting invoices every minute.
+              {logsTotal === 0
+                ? logFilter === "all"
+                  ? "Connect to this supermarket to start injecting invoices every minute."
+                  : "Try switching to All, or wait for the next scheduled run."
+                : "Go to another page or wait for new logs."}
             </p>
           </div>
         ) : (
           <div className="divide-y divide-zinc-100">
-            {conn.logs.map((entry, i) => (
-              <LogEntryRow key={entry.id} entry={entry} isLatest={i === 0} />
+            {logs.map((entry, i) => (
+              <LogEntryRow
+                key={entry.id}
+                entry={entry}
+                isLatest={logPage === 1 && i === 0}
+              />
             ))}
           </div>
+        )}
+        {logsTotal > 0 && logTotalPages > 0 && (
+          <Pagination
+            page={logPage}
+            totalPages={logTotalPages}
+            totalItems={logsTotal}
+            pageSize={JOB_LOG_PAGE_SIZE}
+            hidePageSize
+            onPageChange={setLogPage}
+          />
         )}
       </div>
     </section>

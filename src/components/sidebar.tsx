@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Boxes,
+  CalendarRange,
   ChevronLeft,
   FileText,
   LogOut,
@@ -55,7 +56,8 @@ export function Sidebar({
     { name: "Billing", to: "/invoice", icon: FileText },
     { name: "Customers", to: "/customers", icon: Users },
     { name: "Supermarkets", to: "/supermarkets", icon: Store },
-    { name: "Running", to: "/running", icon: Zap }
+    { name: "Running", to: "/running", icon: Zap },
+    { name: "Injection history", to: "/running/history", icon: CalendarRange }
   ];
 
   return (

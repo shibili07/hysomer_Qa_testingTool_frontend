@@ -5,6 +5,8 @@ import {
   InvoiceSchema
 } from "@/lib/schemas";
 
+import { apiFetch } from "./api-client";
+
 // Local type for product data needed for invoice calculations
 type ProductRecord = {
   id: string;
@@ -31,10 +33,13 @@ type CreateInvoiceInput = {
   notes?: string | null;
   externalTerminalId?: string | null;
   ingestionKey?: string | null;
+  /** Ingestion org — must match Running flow (X-Organization-Id + supermarket API key). */
+  organizationId?: string | null;
 };
 
 export async function createInvoice(input: CreateInvoiceInput) {
   const ingestionKey = input.ingestionKey?.trim() || undefined;
+  const organizationId = input.organizationId?.trim() || undefined;
   const items = input.cart
     .map((line) => {
       const p = input.products.find((x) => x.id === line.productId);
@@ -51,7 +56,7 @@ export async function createInvoice(input: CreateInvoiceInput) {
         unitPrice: p.price,
         totalPrice,
         unit: null,
-        externalProductId: p.productId,
+        externalProductId: p.productId ?? p.id,
         taxAmount: lineTax,
         discountAmount: lineDiscount
       });
@@ -82,6 +87,7 @@ export async function createInvoice(input: CreateInvoiceInput) {
     cashierName: input.cashierName ?? null,
     notes: input.notes ?? null,
     externalTerminalId: input.externalTerminalId ?? null,
+    organizationId: input.organizationId?.trim() || null,
     customer: input.customer
       ? {
           customerId: input.customer.customerId,
@@ -99,12 +105,19 @@ export async function createInvoice(input: CreateInvoiceInput) {
     items
   });
 
+  const extHeaders: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (ingestionKey) {
+    extHeaders["X-Ingestion-Key"] = ingestionKey;
+  }
+  if (organizationId) {
+    extHeaders["X-Organization-Id"] = organizationId;
+  }
+
   const extRes = await fetch("/api/external-invoices", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(ingestionKey ? { "X-Ingestion-Key": ingestionKey } : {})
-    },
+    headers: extHeaders,
     body: JSON.stringify(basePayload)
   });
 
@@ -127,7 +140,7 @@ export async function createInvoice(input: CreateInvoiceInput) {
   };
 
   // Save to local backend instead of Firebase
-  const localRes = await fetch("http://localhost:5000/api/invoices/", {
+  const localRes = await apiFetch("/api/invoices/", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"

@@ -1,7 +1,6 @@
 import { CustomerInput, CustomerSchema } from "@/lib/schemas";
+import { apiFetch } from "./api-client";
 export type { CustomerInput };
-
-const API_BASE_URL = "http://localhost:5000/api/customers";
 
 
 export async function createCustomer(input: CustomerInput) {
@@ -13,13 +12,12 @@ export async function createCustomer(input: CustomerInput) {
     customerId,
   };
 
-  const res = await fetch(`${API_BASE_URL}/`, {
+  const res = await apiFetch("/api/customers/", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
-    credentials: "include",
   });
 
   if (!res.ok) {
@@ -61,19 +59,31 @@ export async function syncCustomer(customerId: string, options: any) {
  * Modern sync used by the Billing module (invoice/page.tsx)
  * Handles full customer and invoice synchronization with the injection server.
  */
-export async function syncCustomerExternal(customer: CustomerInput, options: any) {
+export async function syncCustomerExternal(customer: CustomerInput, options: Record<string, unknown>) {
+  const ingestionKey =
+    typeof options.ingestionKey === "string" ? options.ingestionKey.trim() : "";
+  const organizationId =
+    typeof options.organizationId === "string" ? options.organizationId.trim() : "";
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (ingestionKey) {
+    headers["X-Ingestion-Key"] = ingestionKey;
+  }
+  if (organizationId) {
+    headers["X-Organization-Id"] = organizationId;
+  }
+
   const res = await fetch("/api/external-invoices", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.ingestionKey ? { "X-Ingestion-Key": options.ingestionKey } : {})
-    },
+    headers,
     body: JSON.stringify({
       ...options,
       customer,
       externalInvoiceId: `INV-${Date.now()}`,
       invoiceDate: new Date().toISOString(),
-      status: options.status || "PAID",
+      status: (options.status as string) || "PAID",
     }),
   });
 

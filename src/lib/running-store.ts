@@ -1,13 +1,25 @@
-// Running store – manages supermarket connection state and per-minute invoice injection.
-// All state is kept client-side (in-memory + localStorage) because this is a testing tool
-// that simulates real supermarket data flow against the Hysomer ingestion server.
+/**
+ * Running / invoice injection — state lives on the backend (DB + scheduler).
+ * This module polls the API and notifies subscribers so the UI stays in sync.
+ */
 
-import { Supermarket } from "./supermarkets";
-import { buildInvoicePayload, postInvoice, InvoicePayload, PostResult } from "./invoice-generator";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { apiFetch } from "./api-client";
+import type { Supermarket } from "./supermarkets";
+import type { InvoicePayload } from "./invoice-generator";
 
 export type ConnectionStatus = "disconnected" | "connected" | "stopped";
+
+export interface RunningJobOverview {
+  supermarketId: string;
+  supermarketName: string;
+  organizationId: string;
+  status: ConnectionStatus;
+  invoicesSent: number;
+  invoicesFailed: number;
+  connectedAt: string | null;
+  lastInvoiceAt: string | null;
+  intervalMs: number;
+}
 
 export interface InvoiceLogEntry {
   id: string;
@@ -17,10 +29,15 @@ export interface InvoiceLogEntry {
   customerName: string;
   paymentMethod: string;
   itemCount: number;
+  /** Mirrors DB `success`; redundant with `status` for filters */
+  success?: boolean;
   status: "success" | "failed" | "pending";
   error?: string;
+  httpStatus?: number;
   payload: InvoicePayload;
 }
+
+export type InjectionLogFilter = "all" | "success" | "failed";
 
 export interface SupermarketConnection {
   supermarketId: string;
@@ -32,11 +49,10 @@ export interface SupermarketConnection {
   lastInvoiceAt: string | null;
 }
 
-// ─── In-memory state ──────────────────────────────────────────────────────────
-
-const connections = new Map<string, SupermarketConnection>();
-const intervals = new Map<string, ReturnType<typeof setInterval>>();
+let overviewRows: RunningJobOverview[] = [];
 let listeners: Array<() => void> = [];
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+let pollConsumers = 0;
 
 function notify() {
   listeners.forEach((fn) => fn());
@@ -49,27 +65,36 @@ export function subscribe(fn: () => void): () => void {
   };
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getOrCreate(sm: Supermarket): SupermarketConnection {
-  const id = sm.id || sm._id || "";
-  if (!connections.has(id)) {
-    // Attempt to restore from localStorage
-    const saved = localStorage.getItem(`running_${id}`);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as SupermarketConnection;
-        // Always start disconnected on page load – intervals are lost
-        parsed.status = "disconnected";
-        connections.set(id, parsed);
-      } catch {
-        connections.set(id, createFresh(id));
-      }
-    } else {
-      connections.set(id, createFresh(id));
-    }
+export async function refreshOverview(): Promise<void> {
+  const res = await apiFetch("/api/running/overview");
+  if (!res.ok) {
+    return;
   }
-  return connections.get(id)!;
+  const data = (await res.json()) as { jobs?: RunningJobOverview[] };
+  overviewRows = data.jobs ?? [];
+  notify();
+}
+
+/** Call when Running pages mount — starts a light poll for all subscribers. */
+export function startOverviewPolling(intervalMs = 3000): () => void {
+  pollConsumers += 1;
+  if (!pollTimer) {
+    void refreshOverview();
+    pollTimer = setInterval(() => {
+      void refreshOverview();
+    }, intervalMs);
+  }
+  return () => {
+    pollConsumers = Math.max(0, pollConsumers - 1);
+    if (pollConsumers === 0 && pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  };
+}
+
+function smKey(sm: Supermarket): string {
+  return String(sm.id || sm._id || "");
 }
 
 function createFresh(id: string): SupermarketConnection {
@@ -84,134 +109,186 @@ function createFresh(id: string): SupermarketConnection {
   };
 }
 
-function persist(conn: SupermarketConnection) {
-  try {
-    // Only persist the last 200 logs to avoid bloating localStorage
-    const toSave = { ...conn, logs: conn.logs.slice(-200) };
-    localStorage.setItem(`running_${conn.supermarketId}`, JSON.stringify(toSave));
-  } catch {
-    // localStorage full – silently ignore
-  }
-}
-
-// ─── Core injection logic ─────────────────────────────────────────────────────
-
-async function injectOneInvoice(sm: Supermarket, conn: SupermarketConnection) {
-  const payload = buildInvoicePayload(
-    sm.organization_id,
-    "qatest@hysomer.com",
-    conn.invoicesSent
-  );
-
-  const logEntry: InvoiceLogEntry = {
-    id: crypto.randomUUID(),
-    timestamp: new Date().toISOString(),
-    invoiceId: payload.externalInvoiceId,
-    totalAmount: payload.totalAmount,
-    customerName: payload.customer.name,
-    paymentMethod: payload.paymentMethod,
-    itemCount: payload.items.length,
-    status: "pending",
-    payload,
-  };
-
-  // Add pending log
-  conn.logs.unshift(logEntry);
-  notify();
-
-  // Post to ingestion server
-  const result: PostResult = await postInvoice(payload, sm.api_key, sm.organization_id);
-
-  // Update log entry
-  logEntry.status = result.ok ? "success" : "failed";
-  logEntry.error = result.error;
-  if (result.ok) {
-    conn.invoicesSent += 1;
-  } else {
-    conn.invoicesFailed += 1;
-  }
-  conn.lastInvoiceAt = new Date().toISOString();
-  persist(conn);
-  notify();
-}
-
-// ─── Public API ───────────────────────────────────────────────────────────────
-
 export function getConnection(sm: Supermarket): SupermarketConnection {
-  return getOrCreate(sm);
+  const id = smKey(sm);
+  const row = overviewRows.find((j) => j.supermarketId === id);
+  if (!row) {
+    return createFresh(id);
+  }
+  return {
+    supermarketId: id,
+    status: row.status,
+    invoicesSent: row.invoicesSent,
+    invoicesFailed: row.invoicesFailed,
+    logs: [],
+    connectedAt: row.connectedAt,
+    lastInvoiceAt: row.lastInvoiceAt,
+  };
 }
 
 export function getAllConnections(): Map<string, SupermarketConnection> {
-  return connections;
-}
-
-export function connect(sm: Supermarket) {
-  const id = sm.id || sm._id || "";
-  const conn = getOrCreate(sm);
-
-  if (conn.status === "connected") return;
-
-  conn.status = "connected";
-  conn.connectedAt = conn.connectedAt || new Date().toISOString();
-  persist(conn);
-  notify();
-
-  // Inject immediately, then every 60 seconds
-  injectOneInvoice(sm, conn);
-  const iv = setInterval(() => {
-    if (conn.status === "connected") {
-      injectOneInvoice(sm, conn);
-    }
-  }, 60_000);
-  intervals.set(id, iv);
-}
-
-export function disconnect(sm: Supermarket) {
-  const id = sm.id || sm._id || "";
-  const conn = getOrCreate(sm);
-  conn.status = "disconnected";
-  conn.connectedAt = null;
-  const iv = intervals.get(id);
-  if (iv) {
-    clearInterval(iv);
-    intervals.delete(id);
+  const m = new Map<string, SupermarketConnection>();
+  for (const row of overviewRows) {
+    m.set(row.supermarketId, {
+      supermarketId: row.supermarketId,
+      status: row.status,
+      invoicesSent: row.invoicesSent,
+      invoicesFailed: row.invoicesFailed,
+      logs: [],
+      connectedAt: row.connectedAt,
+      lastInvoiceAt: row.lastInvoiceAt,
+    });
   }
-  persist(conn);
-  notify();
+  return m;
 }
 
-export function stop(sm: Supermarket) {
-  const id = sm.id || sm._id || "";
-  const conn = getOrCreate(sm);
-  conn.status = "stopped";
-  const iv = intervals.get(id);
-  if (iv) {
-    clearInterval(iv);
-    intervals.delete(id);
+export const JOB_LOG_PAGE_SIZE = 15;
+
+export interface JobLogsPage {
+  logs: InvoiceLogEntry[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export async function fetchJobLogsPage(
+  supermarketId: string,
+  page: number,
+  status: InjectionLogFilter = "all",
+  limit = JOB_LOG_PAGE_SIZE
+): Promise<JobLogsPage | null> {
+  const q = new URLSearchParams({
+    limit: String(limit),
+    page: String(page),
+  });
+  if (status === "success") {
+    q.set("status", "success");
+  } else if (status === "failed") {
+    q.set("status", "failed");
   }
-  persist(conn);
-  notify();
+  const res = await apiFetch(`/api/running/jobs/${supermarketId}/logs?${q.toString()}`);
+  if (!res.ok) {
+    return null;
+  }
+  const data = (await res.json()) as {
+    logs?: InvoiceLogEntry[];
+    total?: number;
+    page?: number;
+    limit?: number;
+    totalPages?: number;
+  };
+  return {
+    logs: data.logs ?? [],
+    total: data.total ?? 0,
+    page: data.page ?? page,
+    limit: data.limit ?? limit,
+    totalPages: data.totalPages ?? 0,
+  };
 }
 
-export function resume(sm: Supermarket) {
-  const conn = getOrCreate(sm);
-  if (conn.status !== "stopped") return;
-  connect(sm);
+export type DailyInjectionOutcomeFilter = "all" | "success" | "failed";
+
+export interface DailyInjectionReportRow {
+  date: string;
+  supermarketId: string;
+  supermarketName: string;
+  injectCount: number;
+  successCount: number;
+  failedCount: number;
 }
 
-export function deleteConnection(sm: Supermarket) {
-  const id = sm.id || sm._id || "";
-  disconnect(sm);
-  connections.delete(id);
-  localStorage.removeItem(`running_${id}`);
-  notify();
+export async function fetchDailyInjectionReport(params: {
+  page?: number;
+  limit?: number;
+  supermarketId?: string;
+  from?: string;
+  to?: string;
+  outcome?: DailyInjectionOutcomeFilter;
+}): Promise<{
+  rows: DailyInjectionReportRow[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+} | null> {
+  const q = new URLSearchParams();
+  if (params.page != null) q.set("page", String(params.page));
+  if (params.limit != null) q.set("limit", String(params.limit));
+  if (params.supermarketId) q.set("supermarketId", params.supermarketId);
+  if (params.from) q.set("from", params.from);
+  if (params.to) q.set("to", params.to);
+  if (params.outcome && params.outcome !== "all") q.set("outcome", params.outcome);
+
+  const res = await apiFetch(`/api/running/reports/daily-injections?${q.toString()}`);
+  if (!res.ok) {
+    return null;
+  }
+  const data = (await res.json()) as {
+    rows?: DailyInjectionReportRow[];
+    total?: number;
+    page?: number;
+    limit?: number;
+    totalPages?: number;
+  };
+  return {
+    rows: data.rows ?? [],
+    total: data.total ?? 0,
+    page: data.page ?? 1,
+    limit: data.limit ?? 20,
+    totalPages: data.totalPages ?? 0,
+  };
 }
 
-export function clearLogs(sm: Supermarket) {
-  const conn = getOrCreate(sm);
-  conn.logs = [];
-  conn.invoicesSent = 0;
-  conn.invoicesFailed = 0;
-  persist(conn);
-  notify();
+export async function connect(sm: Supermarket): Promise<void> {
+  const id = smKey(sm);
+  const res = await apiFetch(`/api/running/jobs/${id}/start`, { method: "POST" });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  await refreshOverview();
+}
+
+export async function disconnect(sm: Supermarket): Promise<void> {
+  const id = smKey(sm);
+  const res = await apiFetch(`/api/running/jobs/${id}/stop`, { method: "POST" });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  await refreshOverview();
+}
+
+export async function stop(sm: Supermarket): Promise<void> {
+  const id = smKey(sm);
+  const res = await apiFetch(`/api/running/jobs/${id}/pause`, { method: "POST" });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  await refreshOverview();
+}
+
+export async function resume(sm: Supermarket): Promise<void> {
+  const id = smKey(sm);
+  const res = await apiFetch(`/api/running/jobs/${id}/resume`, { method: "POST" });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  await refreshOverview();
+}
+
+export async function deleteConnection(sm: Supermarket): Promise<void> {
+  const id = smKey(sm);
+  const res = await apiFetch(`/api/running/jobs/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  await refreshOverview();
+}
+
+export async function clearLogs(sm: Supermarket): Promise<void> {
+  const id = smKey(sm);
+  const res = await apiFetch(`/api/running/jobs/${id}/logs`, { method: "DELETE" });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
 }
