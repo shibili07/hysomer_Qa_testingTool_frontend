@@ -85,9 +85,9 @@ export default function SupermarketsPage() {
       }
       resetForm();
       await refreshSupermarkets();
-    } catch (error) {
-      console.error(error);
-      toast.error("Action failed. Check API connection.");
+    } catch (error: any) {
+      console.error("Supermarket submission error:", error);
+      toast.error(error?.message || "Action failed. Check API connection.");
     } finally {
       setLoading(false);
     }

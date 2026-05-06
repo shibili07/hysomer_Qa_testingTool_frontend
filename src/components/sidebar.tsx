@@ -11,7 +11,8 @@ import {
   Plus,
   Store,
   User,
-  Users
+  Users,
+  Zap
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/auth-context";
@@ -53,7 +54,8 @@ export function Sidebar({
     { name: "Products", to: "/products", icon: Package },
     { name: "Billing", to: "/invoice", icon: FileText },
     { name: "Customers", to: "/customers", icon: Users },
-    { name: "Supermarkets", to: "/supermarkets", icon: Store }
+    { name: "Supermarkets", to: "/supermarkets", icon: Store },
+    { name: "Running", to: "/running", icon: Zap }
   ];
 
   return (
@@ -106,7 +108,9 @@ export function Sidebar({
         <nav className="flex-1 space-y-1 px-4">
           {navItems.map((item) => {
             const isActive =
-              location.pathname === item.to || (item.to === "/products" && location.pathname === "/");
+              location.pathname === item.to ||
+              (item.to === "/products" && location.pathname === "/") ||
+              (item.to !== "/" && location.pathname.startsWith(item.to + "/"));
             const Icon = item.icon;
 
             return (

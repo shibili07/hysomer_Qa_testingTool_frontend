@@ -8,6 +8,8 @@ import InvoicePage from "@/pages/InvoicePage";
 import CustomerPage from "@/pages/CustomersPage";
 import LoginPage from "@/pages/LoginPage";
 import SupermarketsPage from "@/pages/SupermarketsPage";
+import RunningPage from "@/pages/RunningPage";
+import RunningDetailPage from "@/pages/RunningDetailPage";
 
 export default function App() {
   return (
@@ -21,6 +23,8 @@ export default function App() {
               <Route path="/invoice" element={<InvoicePage />} />
               <Route path="/customers" element={<CustomerPage />} />
               <Route path="/supermarkets" element={<SupermarketsPage />} />
+              <Route path="/running" element={<RunningPage />} />
+              <Route path="/running/:id" element={<RunningDetailPage />} />
               <Route path="/" element={<Navigate to="/products" replace />} />
               <Route path="*" element={<Navigate to="/products" replace />} />
             </Routes>

@@ -13,7 +13,7 @@ export interface Supermarket {
 
 export async function listSupermarkets() {
   try {
-    const res = await fetch(`${API_BASE_URL}/`, {
+    const res = await fetch(`${API_BASE_URL}`, {
       credentials: "include",
     });
     
@@ -32,7 +32,7 @@ export async function listSupermarkets() {
 
 export async function createSupermarket(supermarketData: Partial<Supermarket>) {
   try {
-    const res = await fetch(`${API_BASE_URL}/`, {
+    const res = await fetch(`${API_BASE_URL}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
